@@ -62,6 +62,16 @@ public:
    virtual void clear() = 0;
 
    /**
+    * Returns the name of the utility/service. Intended to populate a GUI list item.
+    */
+   virtual ossimString getName() = 0;
+
+   /**
+    * Returns the description of the utility/service. Intended to populate a GUI list item.
+    */
+   virtual ossimString getDescription() = 0;
+
+   /**
     * Kills current (asynchronous) process. Defaults to do nothing.
     */
    virtual void abort() {}
