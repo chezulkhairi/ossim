@@ -17,14 +17,11 @@ class ossimCoreUtility;
 class ossimFilename;
 class ossimKeywordlist;
 
-//*******************************************************************
-// CLASS:  ossimCoreUtilityFactory
-//*******************************************************************
-class OSSIMDLLEXPORT ossimCoreUtilityFactory : public ossimUtilityFactory
+class OSSIMDLLEXPORT ossimUtilityFactory : public ossimUtilityFactoryBase
 {
 public:
-   virtual ~ossimCoreUtilityFactory();
-   static ossimCoreUtilityFactory* instance();
+   virtual ~ossimUtilityFactory();
+   static ossimUtilityFactory* instance();
 
    /**
     * @param openOverview If true image handler will attempt to open overview.
@@ -59,10 +56,7 @@ public:
     * name must be unique.
     */
    virtual void getTypeNameList(std::vector<ossimString>& typeList)const;
-   virtual void getSupportedExtensions(ossimUtilityFactory::UniqueStringList& extensionList)const;
-   virtual void getCoreUtilitysBySuffix(ossimUtilityFactory::UtilityList& result, const ossimString& ext)const;
-   virtual void getCoreUtilitysByMimeType(ossimUtilityFactory::UtilityList& result, const ossimString& mimeType)const;
-   
+
 protected:
 
    /**
@@ -79,11 +73,11 @@ protected:
 //   virtual ossimCoreUtility* openFromExtension(
 //      const ossimFilename& fileName) const;
   
-   ossimCoreUtilityFactory(){}
-   ossimCoreUtilityFactory(const ossimCoreUtilityFactory&){}
-   void operator = (const ossimCoreUtilityFactory&){}
+   ossimUtilityFactory(){}
+   ossimUtilityFactory(const ossimUtilityFactory&){}
+   void operator = (const ossimUtilityFactory&){}
 
-   static ossimCoreUtilityFactory* theInstance;
+   static ossimUtilityFactory* theInstance;
 
 TYPE_DATA
 };
