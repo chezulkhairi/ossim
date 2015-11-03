@@ -59,7 +59,7 @@ bool ossimUtility::initialize(ossimArgumentParser& ap)
    {
       ofstream ofs ( ts1.c_str() );
       ossimString json_str;
-      getUtilityApi(json_str);
+      getAPI(json_str);
       ofs << json_str <<endl;
       return false;
    }
@@ -83,7 +83,7 @@ void ossimUtility::getKwlTemplate(ossimString& kwl)
    readFile(kwl_path, kwl);
 }
 
-void ossimUtility::getUtilityApi(ossimString& json) const
+void ossimUtility::getAPI(ossimString& json) const
 {
    ossimFilename json_path (ossimPreferences::instance()->findPreference("ossim_share_directory"));
    json_path += "/ossim/util/" + getClassName() + ".json";
