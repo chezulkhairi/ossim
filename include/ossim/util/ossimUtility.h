@@ -84,7 +84,7 @@ public:
    /**
     * Outputs a JSON representation of the Utility's API.
     */
-   void getUtilityApi(ossimString& out) const;
+   void getAPI(ossimString& out) const;
 
    virtual ossimObject* getObject() { return this; }
    virtual const ossimObject* getObject() const  { return this; }
