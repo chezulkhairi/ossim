@@ -69,6 +69,9 @@ static const std::string COLOR_GREEN_KW          = "color_green";
 static const std::string COLOR_RED_KW            = "color_red";
 static const std::string GAIN_KW                 = "gain";
 
+const char*  ossimHillshadeUtil::DESCRIPTION =
+   "Computes shaded representation of input elevation surface with specified lighting parameters.";
+
 ossimHillshadeUtil::ossimHillshadeUtil()
 {
    m_kwl.setExpandEnvVarsFlag(true);
