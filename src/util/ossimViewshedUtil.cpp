@@ -4,7 +4,6 @@
 //     See top level LICENSE.txt file for license information
 //
 //**************************************************************************************************
-//  $Id$
 
 #include <ossim/util/ossimViewshedUtil.h>
 #include <ossim/base/ossimApplicationUsage.h>

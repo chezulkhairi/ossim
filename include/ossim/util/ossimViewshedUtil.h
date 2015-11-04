@@ -1,11 +1,9 @@
-//*******************************************************************
+//**************************************************************************************************
 //
-// License:  See top level LICENSE.txt file.
-// 
-// Author: Oscar Kramer
+//     OSSIM Open Source Geospatial Data Processing Library
+//     See top level LICENSE.txt file for license information
 //
-//*************************************************************************
-// $Id: ossimViewshedUtil.h 23409 2015-07-08 16:24:41Z okramer $
+//**************************************************************************************************
 
 #ifndef ossimViewshedUtil_HEADER
 #define ossimViewshedUtil_HEADER

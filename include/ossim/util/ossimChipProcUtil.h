@@ -1,20 +1,9 @@
-//----------------------------------------------------------------------------
+//**************************************************************************************************
 //
-// File: ossimChipProcUtil.h
-// 
-// License:  LGPL
-// 
-// See LICENSE.txt file in the top level directory for more details.
+//     OSSIM Open Source Geospatial Data Processing Library
+//     See top level LICENSE.txt file for license information
 //
-// Author:  David Burken
-//
-// Description:
-// 
-// Utility class to for chipping out images. , orthorectifying imagery with an
-// added slant toward doing digital elevation model(DEM) operations.
-// 
-//----------------------------------------------------------------------------
-// $Id: ossimChipProcUtil.h 23423 2015-07-13 19:07:38Z dburken $
+//**************************************************************************************************
 
 #ifndef ossimChipProcUtil_HEADER
 #define ossimChipProcUtil_HEADER 1
@@ -38,34 +27,26 @@ class ossimGpt;
 class ossimImageData;
 class ossimImageFileWriter;
 class ossimImageGeometry;
-class ossimImageViewAffineTransform;
 class ossimIrect;
 class ossimKeywordlist;
 
 /**
  * @brief ossimChipProcUtil class.
  *
- * This is a utility class to orthorectify imagery with an added slant toward
- * doing digital elevation model(DEM) operations.
- *
- * See the ossim-dem application for a code usage example.
- *
  * @note Almost all methods use throw for stack unwinding.  This is not in
  * method declarations to alleviate build errors on windows.  Sorry...
- *
- * @note "bumpshade" and "hillshade" intermixed throughout.  The class to do
- * a hillshade is the ossimBumpShadeTileSource.
  */
 class OSSIM_DLL ossimChipProcUtil : public ossimUtility
 {
 public:
    enum OutputProjectionType
    {
-      OSSIM_CHIPPER_PROJ_UNKNOWN    = 0,
-      OSSIM_CHIPPER_PROJ_GEO        = 1,
-      OSSIM_CHIPPER_PROJ_GEO_SCALED = 2,
-      OSSIM_CHIPPER_PROJ_INPUT      = 3,
-      OSSIM_CHIPPER_PROJ_UTM        = 4
+      UNKNOWN_PROJ    = 0,
+      GEO_PROJ        = 1,
+      GEO_SCALED_PROJ = 2,
+      INPUT_PROJ      = 3,
+      UTM_PROJ        = 4,
+      IDENTITY        = 5
    };
 
    /** default constructor */
@@ -107,6 +88,8 @@ public:
 
    /**
     * Overrides base class implementation to indicate this class supports getChip() calls.
+    * Can be done with dunamic cast and pointer test, but not sure how that is supported in SWIG
+    * (OLK 11/2015).
     */
    virtual bool isChipProcessor() const { return true; }
 
@@ -123,12 +106,17 @@ public:
    void getOutputFilename(ossimFilename& f) const;
 
 protected:
+   /**
+    * Intended to be called after derived class has picked off its own options from the parser, and
+    * arguments remain (such as input and output filenames).
+    */
    bool processRemainingArgs(ossimArgumentParser& ap);
 
    /**
     * Derived classes initialize their custom chains here.
     */
    virtual void initializeChain() = 0;
+
    /**
     * Sets up the AOI box cutter filter and related stuff and initializes area of interest(aoi).
     * The filter is appended to the current m_procChain.
@@ -158,27 +146,27 @@ protected:
    void addSource(const ossimSrcRecord& rec);
 
    /**
-    * @brief Creates a ossimSingleImageChain from file.
+    * @brief Creates the ossimSingleImageChain from file and populates the chain with the reader
+    * handler ONLY. Derived classes must finish constructing the chain according to their
+    * processing needs.
+    *
     * @param file File to open.
     * @param entryIndex Entry to open.
-    * @param isDemSource True if dem source, false if not. This controls chain
-    * options like histogram stretches.
     * @return Ref pointer to ossimSingleImageChain.
     * @note Throws ossimException on error.
     */
    ossimRefPtr<ossimSingleImageChain> createChain(const ossimFilename& file,
-                                                  ossim_uint32 entryIndex,
-                                                  bool isDemSource) const;
+                                                  ossim_uint32 entryIndex=0) const;
 
    /**
-    * @brief Creates a ossimSingleImageChain from ossimSrcRecord.
+    * @brief Creates a ossimSingleImageChain from ossimSrcRecord and populates the chain with the
+    * handler ONLY. Derived classes must finish constructing the chain according to their
+    * processing needs.
     * @param src Record.
-    * @param isDemSource True if dem source, false if not. This controls chain
-    * options like histogram stretches.
     * @return Ref pointer to ossimSingleImageChain.
     * @note Throws ossimException on error.
     */
-   ossimRefPtr<ossimSingleImageChain> createChain(const ossimSrcRecord& rec, bool isDemSource) const;
+   ossimRefPtr<ossimSingleImageChain> createChain(const ossimSrcRecord& rec) const;
 
    /**
     * @brief Creates the output or view projection.
@@ -363,22 +351,16 @@ protected:
    void propagateOutputProjectionToChains();
 
    /**
-    * @brief Combines all layers into an ossimImageMosaic.
-    * @return ossimRefPtr with pointer to ossimImageSource.  Can be null.
-    */
-   ossimRefPtr<ossimImageSource> combineLayers(
-      std::vector< ossimRefPtr<ossimSingleImageChain> >& layers) const;
-
-   /** @brief Combines dems(m_demLayer) and images(m_imgLayer). */
-   ossimRefPtr<ossimImageSource> combineLayers();
-
-   /**
-    * @brief Creates ossimIndexToRgbLutFilter and connects to source.
-    * @param Source to connect to.
-    * @return End of chain with lut filter on it.
+    * @brief Creates ossimIndexToRgbLutFilter and appends it to m_procChain.
     * @note Throws ossimException on error.
     */
-   ossimRefPtr<ossimImageSource> addIndexToRgbLutFilter(ossimRefPtr<ossimImageSource> &source) const;
+   void addIndexToRgbLutFilter();
+
+   /**
+    * When multiple input sources are present, this method inserts a combiner into the processing
+    * chain.
+    */
+   void combineLayers();
 
    /**
     * @brief Creates ossimScalarRemapper and connects to source.
@@ -624,10 +606,10 @@ protected:
    std::string getSharpenMode() const;
 
    /** @brief Hidden from use copy constructor. */
-   ossimChipProcUtil( const ossimChipProcUtil& obj );
+   ossimChipProcUtil( const ossimChipProcUtil& /* obj */) {}
 
    /** @brief Hidden from use assignment operator. */
-   const ossimChipProcUtil& operator=( const ossimChipProcUtil& rhs );
+   const ossimChipProcUtil& operator=( const ossimChipProcUtil& /*rhs*/ ) { return *this; }
 
    ossimRefPtr<ossimImageSource> createCombiner()const;
 

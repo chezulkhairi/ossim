@@ -4,7 +4,6 @@
 //     See top level LICENSE.txt file for license information
 //
 //**************************************************************************************************
-// $Id: ossimSlopeUtil.h 23443 2015-07-17 15:57:00Z okramer $
 
 #ifndef ossimSlopeUtil_HEADER
 #define ossimSlopeUtil_HEADER

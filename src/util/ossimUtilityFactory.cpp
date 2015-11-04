@@ -4,7 +4,6 @@
 //     See top level LICENSE.txt file for license information
 //
 //**************************************************************************************************
-// $Id$
 
 #include <ossim/util/ossimUtilityFactory.h>
 #include <ossim/util/ossimUtilityManager.h>

@@ -1,18 +1,9 @@
-//----------------------------------------------------------------------------
+//**************************************************************************************************
 //
-// File: ossimChipProcUtil.cpp
-// 
-// License:  LGPL
-// 
-// See LICENSE.txt file in the top level directory for more details.
+//     OSSIM Open Source Geospatial Data Processing Library
+//     See top level LICENSE.txt file for license information
 //
-// Author:  David Burken
-//
-// Description: Utility class definition processing digital elevation
-// models(dems).
-// 
-//----------------------------------------------------------------------------
-// $Id: ossimChipProcUtil.cpp 23423 2015-07-13 19:07:38Z dburken $
+//**************************************************************************************************
 
 #include <ossim/base/ossimArgumentParser.h>
 #include <ossim/base/ossimApplicationUsage.h>
@@ -73,7 +64,6 @@ static ossimTrace traceDebug("ossimChipProcUtil:debug");
 static ossimTrace traceLog("ossimChipProcUtil:log");
 static ossimTrace traceOptions("ossimChipProcUtil:options");
 
-static const std::string APPLICATION_NAME_KW     = "application_name";
 static const std::string BRIGHTNESS_KW           = "brightness";
 static const std::string CONTRAST_KW             = "contrast";
 static const std::string CLIP_WMS_BBOX_LL_KW     = "clip_wms_bbox_ll";
@@ -89,13 +79,10 @@ static const std::string CUT_MAX_LON_KW          = "cut_max_lon";
 static const std::string CUT_MIN_LAT_KW          = "cut_min_lat";
 static const std::string CUT_MIN_LON_KW          = "cut_min_lon";
 static const std::string CUT_WIDTH_KW            = "cut_width";   // pixels
-static const std::string DEM_KW                  = "dem";
-static const std::string GAIN_KW                 = "gain";
-static const std::string FILE_KW                 = "file";
 static const std::string HISTO_OP_KW             = "hist_op";
 static const std::string IMAGE_SPACE_SCALE_X_KW  = "image_space_scale_x";
 static const std::string IMAGE_SPACE_SCALE_Y_KW  = "image_space_scale_y";
-static const std::string IMG_KW                  = "image";
+static const std::string INPUT_SOURCE_KW        = "input_source";
 static const std::string LUT_FILE_KW             = "lut_file";
 static const std::string DEGREES_X_KW            = "degrees_x";
 static const std::string DEGREES_Y_KW            = "degrees_y";
@@ -121,25 +108,8 @@ static const std::string WRITER_PROPERTY_KW      = "writer_property";
 static const std::string COMBINER_TYPE_KW        = "combiner_type"; 
 
 ossimChipProcUtil::ossimChipProcUtil()
-: m_geom(0),
-  m_ivt(0),
-  m_demLayer(0),
-  m_imgLayer(0)
 {
-   // traceDebug.setTraceFlag(true);
-
    m_kwl.setExpandEnvVarsFlag(true);
-}
-
-// Private/hidden from use.
-ossimChipProcUtil::ossimChipProcUtil( const ossimChipProcUtil& /* obj */ )
-{
-}
-
-// Private/hidden from use.
-const ossimChipProcUtil& ossimChipProcUtil::operator=( const ossimChipProcUtil& /* rhs */)
-{
-   return *this;
 }
 
 ossimChipProcUtil::~ossimChipProcUtil()
@@ -192,8 +162,7 @@ bool ossimChipProcUtil::initialize(ossimArgumentParser& ap)
    double tempDouble2;
    ossimArgumentParser::ossimParameter doubleParam2(tempDouble2);
 
-   ossim_uint32 demIdx        = 0;
-   ossim_uint32 imgIdx        = 0;
+   ossim_uint32 srcIdx        = 0;
    ossim_uint32 readerPropIdx = 0;
    ossim_uint32 writerPropIdx = 0;
    ossimString  key           = "";
@@ -304,11 +273,6 @@ bool ossimChipProcUtil::initialize(ossimArgumentParser& ap)
       m_kwl.add( DEGREES_Y_KW.c_str(), tempDouble2 );
    }   
 
-   if ( ap.read("--elevation", stringParam1) )
-   {
-      m_kwl.addPair( std::string(ossimKeywordNames::ELEVATION_ANGLE_KW), tempString1 );
-   }
-
    if ( ap.read("-e", stringParam1) || ap.read("--entry", stringParam1) )
    {
       m_kwl.addPair( std::string(ossimKeywordNames::ENTRY_KW), tempString1 );
@@ -330,37 +294,28 @@ bool ossimChipProcUtil::initialize(ossimArgumentParser& ap)
       m_kwl.add( IMAGE_SPACE_SCALE_Y_KW.c_str(), tempDouble2 );
    }
 
-   while( ap.read("--input-dem", stringParam1) )
+   int idx = 0;
+   while( ap.read("--input-source", stringParam1) )
    {
-      key = DEM_KW;
-      key += ossimString::toString(demIdx);
+      key = INPUT_SOURCE_KW;
+      key += ossimString::toString(idx++);
       key += ".";
-      key += FILE_KW;
-      m_kwl.addPair( key.string(), tempString1 );
-      ++demIdx;
+      key += ossimKeywordNames::FILE_KW;
+     m_kwl.addPair(key.string(), tempString1 );
    }
 
-   while( ap.read("--input-img", stringParam1) )
+   idx = 0;
+   while( ap.read("--src-file", stringParam1) )
    {
-      key = IMG_KW;
-      key += ossimString::toString(imgIdx);
-      key += ".";
-      key += FILE_KW;
+      key = SRC_FILE_KW;
+      key += ossimString::toString(idx++);
       m_kwl.addPair(key.string(), tempString1 );
-      ++imgIdx;
    }
 
-   if( ap.read("--input-src", stringParam1) )
+   if( ap.read("--meters", stringParam1) )
    {
-      m_kwl.addPair( SRC_FILE_KW, tempString1 );
+      m_kwl.addPair( METERS_KW, tempString1 );
    }
-
-   if (ap.read("--meters", stringParam1))
-
-      if( ap.read("--meters", stringParam1) )
-      {
-         m_kwl.addPair( METERS_KW, tempString1 );
-      }
 
    if ( ap.read("-n") || ap.read("--north-up") )
    {
@@ -501,9 +456,8 @@ bool ossimChipProcUtil::initialize(ossimArgumentParser& ap)
 
 bool ossimChipProcUtil::processRemainingArgs(ossimArgumentParser& ap)
 {
-   ossimString  key           = "";
-   ossim_uint32 demIdx        = 0;
-   ossim_uint32 imgIdx        = 0;
+   ossimString  key    = "";
+   ossim_uint32 inputIdx = 0;
 
    if ( ap.argc() >= 2 )
    {
@@ -527,40 +481,24 @@ bool ossimChipProcUtil::processRemainingArgs(ossimArgumentParser& ap)
       {
          ossimFilename file = ap[pos];
          if ( traceDebug() )
-         {
-            ossimNotify(ossimNotifyLevel_DEBUG)
-                                 << "argv[" << pos << "]: " << file << "\n";
-         }
+            ossimNotify(ossimNotifyLevel_DEBUG) << "argv[" << pos << "]: " << file << "\n";
 
-         if ( isDemFile(file) )
+         if ( isSrcFile(file) )
          {
-            key = DEM_KW;
-            key += ossimString::toString(demIdx);
-            key += ".";
-            key += FILE_KW;
-            m_kwl.addPair( key, file.string() );
-            ++demIdx;
-         }
-         else if ( isSrcFile(file) ) 
-         {
-            if ( m_kwl.find( SRC_FILE_KW.c_str() ) ) // --input-src used also
+            if ( m_kwl.find( SRC_FILE_KW.c_str() ) )
             {
                std::string errMsg = "ossimChipProcUtil::processRemainingArgs()";
                errMsg += "ERROR Multiple src files passed in.  Please combine into one.";
                throw ossimException(errMsg);
             }
-
             m_kwl.addPair( SRC_FILE_KW, file.string() );
          }
-         else // Add as an input image.
-         {
-            key = IMG_KW;
-            key += ossimString::toString(imgIdx);
-            key += ".";
-            key += FILE_KW;
-            m_kwl.addPair(key.string(), file.string() );
-            ++imgIdx;
-         }
+
+         key = INPUT_SOURCE_KW;
+         key += ossimString::toString(inputIdx++);
+         key += ".";
+         key += ossimKeywordNames::FILE_KW;
+         m_kwl.addPair( key, file.string() );
 
          ++pos; // Go to next arg...
 
@@ -829,107 +767,24 @@ ossimRefPtr<ossimImageData> ossimChipProcUtil::getChip(const ossimIrect& boundin
    return result;
 }
 
-void ossimChipProcUtil::addDemSources()
+void ossimChipProcUtil::addSources()
 {
-   // Add the images from the options keyword list.
-   ossim_uint32 demCount = m_kwl.numberOf( DEM_KW.c_str() );
-   ossim_uint32 maxIndex = demCount + 100; // Allow for skippage in numbering.
-   ossim_uint32 foundRecords = 0;
-   ossim_uint32 i = 0;
-   while ( foundRecords < demCount )
-   {
-      ossimString key = DEM_KW;
-      key += ossimString::toString(i);
-      key += ".";
-      key += FILE_KW;
-      ossimFilename f = m_kwl.findKey( key.string() );
-      if ( f.size() )
-      {
-         // Look for the entry key, e.g. dem0.entry: 10
-         ossim_uint32 entryIndex = 0;
-         key = DEM_KW;
-         key += ossimString::toString(i);
-         key += ".";
-         key += ossimKeywordNames::ENTRY_KW;
-         std::string value = m_kwl.findKey( key.string() );
-         if ( value.size() )
-         {
-            entryIndex = ossimString(value).toUInt32();
-         }
-         else
-         {
-            // Get global entry.  Set by "-e" on command line apps.
-            entryIndex = getEntryNumber();
-         }
-
-         addDemSource( f, entryIndex );
-         ++foundRecords;
-      }
-      ++i;
-      if ( i >= maxIndex ) break;
-   }
-
-   if ( m_srcKwl.getSize() )
-   {
-      // Add stuff from src keyword list.
-      demCount = m_srcKwl.numberOf( DEM_KW.c_str() );
-      maxIndex = demCount + 100;
-      foundRecords = 0;
-      i = 0;
-      while ( foundRecords < demCount )
-      {
-         ossimString prefix = DEM_KW;
-         prefix += ossimString::toString(i);
-         prefix += ".";
-         ossimSrcRecord src;
-         if ( src.loadState( m_srcKwl, prefix ) )
-         {
-            addDemSource(src);
-            ++foundRecords;
-         }
-         ++i;
-         if ( i >= maxIndex ) break;
-      }
-   }
-
-}
-
-void ossimChipProcUtil::addDemSource(const ossimFilename& file, ossim_uint32 entryIndex)
-{
-   ossimRefPtr<ossimSingleImageChain> ic = createChain(file, entryIndex, true);
-   if ( ic.valid() )
-   {
-      m_demLayer.push_back(ic);
-   }
-}
-
-void ossimChipProcUtil::addDemSource(const ossimSrcRecord& rec)
-{
-   ossimRefPtr<ossimSingleImageChain> ic = createChain(rec, true);
-   if ( ic.valid() )
-   {
-      m_demLayer.push_back(ic);
-   }
-}
-
-void ossimChipProcUtil::addImgSources()
-{
-   ossim_uint32 imgCount = m_kwl.numberOf( IMG_KW.c_str() );
+   ossim_uint32 imgCount = m_kwl.numberOf( INPUT_SOURCE_KW.c_str() );
    ossim_uint32 maxIndex = imgCount + 100; // Allow for skippage in numbering.
    ossim_uint32 foundRecords = 0;
    ossim_uint32 i = 0;
    while ( foundRecords < imgCount )
    {
-      ossimString key = IMG_KW;
+      ossimString key = INPUT_SOURCE_KW;
       key += ossimString::toString(i);
       key += ".";
-      key += FILE_KW;
+      key += ossimKeywordNames::FILE_KW;
       ossimFilename f = m_kwl.findKey( key.string() );
       if ( f.size() )
       {
          // Look for the entry key, e.g. image0.entry: 10
          ossim_uint32 entryIndex = 0;
-         key = IMG_KW;
+         key = INPUT_SOURCE_KW;
          key += ossimString::toString(i);
          key += ".";
          key += ossimKeywordNames::ENTRY_KW;
@@ -944,7 +799,7 @@ void ossimChipProcUtil::addImgSources()
             entryIndex = getEntryNumber();
          }
          // Add it:
-         addImgSource(f, entryIndex );         
+         addSource(f, entryIndex );
          ++foundRecords;
       }
       ++i;
@@ -954,19 +809,19 @@ void ossimChipProcUtil::addImgSources()
    if ( m_srcKwl.getSize() )
    {
       // Add stuff from src keyword list.
-      imgCount = m_srcKwl.numberOf( IMG_KW.c_str() );
+      imgCount = m_srcKwl.numberOf( INPUT_SOURCE_KW.c_str() );
       maxIndex = imgCount + 100;
       foundRecords = 0;
       i = 0;
       while ( foundRecords < imgCount )
       {
-         ossimString prefix = IMG_KW;
+         ossimString prefix = INPUT_SOURCE_KW;
          prefix += ossimString::toString(i);
          prefix += ".";
          ossimSrcRecord src;
          if ( src.loadState( m_srcKwl, prefix ) )
          {
-            addImgSource(src);
+            addSource(src);
             ++foundRecords;
          }
          ++i;
@@ -975,41 +830,10 @@ void ossimChipProcUtil::addImgSources()
    }
 }
 
-void ossimChipProcUtil::addImgSource(const ossimFilename& file, ossim_uint32 entryIndex)
+void ossimChipProcUtil::addSource(const ossimFilename& file, ossim_uint32 entryIndex)
 {
-   ossimRefPtr<ossimSingleImageChain> ic = createChain(file, entryIndex, false);
-   if ( ic.valid() )
-   {
-      m_imgLayer.push_back(ic);
-   }
-}
+   ossimRefPtr<ossimSingleImageChain> ic = new ossimSingleImageChain;
 
-void ossimChipProcUtil::addImgSource(const ossimSrcRecord& rec)
-{
-   ossimRefPtr<ossimSingleImageChain> ic = createChain(rec, false);
-   if ( ic.valid() )
-   {
-      m_imgLayer.push_back(ic);
-   }
-}
-
-ossimRefPtr<ossimSingleImageChain> ossimChipProcUtil::createChain(const ossimFilename& file,
-                                                                  ossim_uint32 entryIndex,
-                                                                  bool isDemSource) const
-{
-   if ( traceDebug() )
-   {
-      ossimNotify(ossimNotifyLevel_DEBUG)
-                           << "ossimChipProcUtil::createChain() entered with:"
-                           << "\nfile: " << file
-                           << "\nentry: " << entryIndex
-                           << "\nisDemSource: " << (isDemSource?"true":"false")
-                           << "\n";
-   }   
-
-   ossimRefPtr<ossimSingleImageChain> ic = 0;
-
-   ic = new ossimSingleImageChain;
    if (!file.isReadable() || !ic->open( file ))
    {
       std::string errMsg = "Could not open: ";
@@ -1023,8 +847,6 @@ ossimRefPtr<ossimSingleImageChain> ossimChipProcUtil::createChain(const ossimFil
    // we can't guarantee the state of the image handler at this point so
    // let's make sure that the entry is always set to the requested location
    //  On Cib/Cadrg we were having problems.  Removed the compare for entry 0
-   //
-
    if ( setChainEntry( ic, entryIndex ) == false )
    {
       std::ostringstream errMsg;
@@ -1032,197 +854,25 @@ ossimRefPtr<ossimSingleImageChain> ossimChipProcUtil::createChain(const ossimFil
       throw ossimException( errMsg.str() );
    }
 
-   //---
-   // If PSM (pan sharpening) operation and this input is one band, don't
-   // mess with its bands.
-   //---
-   bool psmPanInput = false;
-   if ( ( m_operation != OSSIM_CHIPPER_OP_PSM ) || ( ic->getNumberOfOutputBands() != 1 ))
-   {
-      if ( isThreeBandOut() )
-      {
-         //---
-         // This will guarantee three bands out.  Will put band selector at
-         // the end of the chain if input is one band.
-         //---
-         ic->setThreeBandFlag( true );
-      }
-
-      if ( hasBandSelection() )
-      {
-         // User entered band list.
-         std::vector<ossim_uint32> bandList(0);
-         getBandList( bandList );
-         if ( bandList.size() )
-         {
-            ic->setBandSelection( bandList );
-         }
-      }
-   }
-
-   //---
-   // If multiple inputs and scaleToEightBit do it at the end of the processing
-   // chain to alleviate un-even stretches between inputs.
-   //---
-   const ossim_uint32 INPUT_COUNT = getNumberOfInputs();
-   bool scaleFlag = ( scaleToEightBit() && (INPUT_COUNT == 1) );
-   ic->setRemapToEightBitFlag( scaleFlag );
-
-   // Always have resampler cache.
-   ic->setAddResamplerCacheFlag(true);
-
-   //---
-   // Don't need a chain cache as we're doing a sequential write.  So the same tile
-   // should never be visited more than once.
-   //---
-   ic->setAddChainCacheFlag(false);
-
-   //---
-   // Histogram:
-   // Don't apply histogram stretch to dem sources for hill shade
-   // operation.
-   //---
-   if ( ( isDemSource == false ) ||
-         ( isDemSource && (m_operation != OSSIM_CHIPPER_OP_HILL_SHADE) ) )
-   {
-      ic->setAddHistogramFlag( hasHistogramOperation() );
-   }
-
-   // Brightness, contrast. Note in same filter.
-   if ( hasBrightnesContrastOperation() )
-   {
-      ic->setBrightnessContrastFlag(true);
-   }
-
-   std::string sharpnessMode = getSharpenMode();
-   if ( sharpnessMode.size() )
-   {
-      ic->setSharpenFlag(true);
-   }
-
-   // Create the chain.
-   ic->createRenderedChain();
-
-   // Set the filter type if needed.
-   ossimString lookup = m_kwl.findKey( RESAMPLER_FILTER_KW );
-   if ( lookup.size() )
-   {
-      // Assumption image renderer is in chain:
-      ic->getImageRenderer()->getResampler()->setFilterType( lookup );
-   }
-
-   // Histogram setup.
-   if ( hasHistogramOperation() )
-   {
-      setupChainHistogram( ic );
-   }
-
-   // Brightness constrast setup:
-   if ( hasBrightnesContrastOperation() )
-   {
-      // Assumption bright contrast filter in chain:
-
-      ossim_float64 value = getBrightness();
-      ic->getBrightnessContrast()->setBrightness( value );
-
-      value = getContrast();
-      ic->getBrightnessContrast()->setContrast( value );
-   }
-
-   // Sharpness:
-   if ( sharpnessMode.size() )
-   {
-      if ( sharpnessMode == "light" )
-      {
-         ic->getSharpenFilter()->setWidthAndSigma( 3, 0.5 );
-      }
-      else if ( sharpnessMode == "heavy" )
-      {
-         ic->getSharpenFilter()->setWidthAndSigma( 5, 1.0 );
-      }
-   }
-
-   if(hasGeoPolyCutterOption())
-   {
-      ossimGeoPolygon polygon;
-      getClipPolygon(polygon);
-      if(polygon.size()>0)
-      {
-         ic->addGeoPolyCutterPolygon(polygon);
-      }
-   }
-
-   if ( traceDebug() )
-   {
-      ossimKeywordlist kwl;
-      ic->saveState(kwl, 0);
-      ossimNotify(ossimNotifyLevel_DEBUG)
-      << "chain:\n" << kwl << "\n" << endl;
-   }   
-
-   return ic;
+   m_srcLayers.push_back(ic);
 }
 
-ossimRefPtr<ossimSingleImageChain> ossimChipProcUtil::createChain(const ossimSrcRecord& rec,
-                                                                  bool isDemSource) const
+void ossimChipProcUtil::addSource(const ossimSrcRecord& rec)
 {
    ossimRefPtr<ossimSingleImageChain> ic = new ossimSingleImageChain;
-   if ( ic->open(rec) )
-   {
-      //---
-      // If multiple inputs and scaleToEightBit do it at the end of the processing
-      // chain to alleviate un-even strectes between inputs.
-      //---
-      bool scaleFlag = ( scaleToEightBit() && ( getNumberOfInputs() == 1) );
-      ic->setRemapToEightBitFlag( scaleFlag );
-
-      // Always have resampler cache.
-      ic->setAddResamplerCacheFlag(true);
-
-      //---
-      // Don't need a chain cache as we're doing a sequential write.  So the same tile
-      // should never be visited more than once.
-      //---
-      ic->setAddChainCacheFlag(false);
-
-      // Histogram.
-      if ( isDemSource == false )
-      {
-         ic->setAddHistogramFlag( hasHistogramOperation() );
-      }
-
-      //---
-      // NOTE: Histogram and band selector can be set in ic->createRenderedChain(rec)
-      // if the right keywords are there.
-      //---
-      ic->createRenderedChain(rec);
-
-      // Set the filter type if needed.
-      ossimString lookup = m_kwl.findKey( RESAMPLER_FILTER_KW );
-      if ( lookup.size() )
-      {
-         ic->getImageRenderer()->getResampler()->setFilterType( lookup );
-      }
-   }
-   else // Open failed.
+   if ( !ic->open(rec) )
    {
       std::string errMsg = "Could not open from src record!";
-      throw ossimException(errMsg); 
+      throw ossimException(errMsg);
    }
 
-   if ( traceDebug() )
-   {
-      ossimKeywordlist kwl;
-      ic->saveState(kwl, 0);
-      ossimNotify(ossimNotifyLevel_DEBUG)
-      << "chain:\n" << kwl << "\n" << endl;;
-   }   
-
-   return ic;
+   m_srcLayers.push_back(ic);
 }
+
 
 void ossimChipProcUtil::createOutputProjection()
 {
+   static const char* MODULE = "ossimChipProcUtil::createOutputProjection()";
    std::string op  = m_kwl.findKey( std::string(ossimKeywordNames::PROJECTION_KW) );
    std::string srs = m_kwl.findKey( SRS_KW );
 
@@ -1238,7 +888,7 @@ void ossimChipProcUtil::createOutputProjection()
    }
 
    bool usingInput = false;
-   ossimChipperOutputProjection projType = getOutputProjectionType();
+   OutputProjectionType projType = getOutputProjectionType();
    ossimRefPtr<ossimMapProjection> proj = 0;
 
    // If an srs code use that first.
@@ -1250,23 +900,23 @@ void ossimChipProcUtil::createOutputProjection()
    {
       switch ( projType )
       {
-      case ossimChipProcUtil::OSSIM_CHIPPER_PROJ_GEO:
+      case ossimChipProcUtil::GEO_PROJ:
       {
          proj = getNewGeoProjection();
          break;
       }
-      case ossimChipProcUtil::OSSIM_CHIPPER_PROJ_GEO_SCALED:
+      case ossimChipProcUtil::GEO_SCALED_PROJ:
       {
          proj = getNewGeoScaledProjection();
          break;
       }
-      case ossimChipProcUtil::OSSIM_CHIPPER_PROJ_INPUT:
+      case ossimChipProcUtil::INPUT_PROJ:
       {
          proj = getFirstInputProjection();
          usingInput = true;
          break;
       }
-      case ossimChipProcUtil::OSSIM_CHIPPER_PROJ_UTM:
+      case ossimChipProcUtil::UTM_PROJ:
       {
          proj = getNewUtmProjection();
          break;
@@ -1284,7 +934,7 @@ void ossimChipProcUtil::createOutputProjection()
    {
       if ( *(inputProj.get()) == *(proj.get()) )
       {
-         if ( projType == OSSIM_CHIPPER_PROJ_GEO_SCALED )
+         if ( projType == GEO_SCALED_PROJ )
          {
             // Get the origin used for scaling. 
             ossimGpt origin = proj->getOrigin();
@@ -1355,8 +1005,8 @@ void ossimChipProcUtil::createOutputProjection()
    if ( traceDebug() )
    {
       ossimNotify(ossimNotifyLevel_DEBUG)
-                           << "using input projection: " << (usingInput?"true":"false")
-                           << "\noutput image geometry:\n";
+                                 << "using input projection: " << (usingInput?"true":"false")
+                                 << "\noutput image geometry:\n";
       m_geom->print(ossimNotify(ossimNotifyLevel_DEBUG));
    }
 
@@ -1366,92 +1016,79 @@ void ossimChipProcUtil::createIdentityProjection()
 {
    // Get the singe image chain.  Sould be only one.
    ossimRefPtr<ossimSingleImageChain> sic = 0;
-   if ( m_demLayer.size() )
+   if ( m_srcLayers.size() )
+      sic = m_srcLayers[0];
+
+   if ( !sic.valid() )
+      return;
+
+   // Get the image handler.
+   ossimRefPtr<ossimImageHandler>  ih = sic->getImageHandler();
+
+   // Resampler:
+   ossimRefPtr<ossimImageRenderer> resampler = sic->getImageRenderer();
+   if ( !ih.valid() || !resampler.valid() )
+      return;
+
+   // Get the geometry from the image handler.  Since we're in "identity"
+   // mode use the inputs for the outputs.
+   m_geom = ih->getImageGeometry();
+   if ( !m_geom.valid() )
+      return;
+
+   // Get the image projection.
+   ossimRefPtr<ossimProjection> proj = m_geom->getProjection();
+   if ( !proj.valid() )
+      return;
+
+   ossim_float64 rotation = 0.0;
+   if ( upIsUp() )
    {
-      sic = m_demLayer[0];
+      rotation = m_geom->upIsUpAngle();
    }
-   else if ( m_imgLayer.size() )
+   else if ( northUp() )
    {
-      sic = m_imgLayer[0];
+      rotation = m_geom->northUpAngle();
+   }
+   else if ( hasRotation() )
+   {
+      rotation = getRotation();
    }
 
-   if ( sic.valid() )
+   if ( ossim::isnan( rotation ) )
    {
-      // Get the image handler.
-      ossimRefPtr<ossimImageHandler>  ih = sic->getImageHandler();
+      rotation = 0.0;
+   }
 
-      // Resampler:
-      ossimRefPtr<ossimImageRenderer> resampler = sic->getImageRenderer();
+   ossimDpt imageSpaceScale;
+   getImageSpaceScale( imageSpaceScale );
 
-      if ( ih.valid() )
-      {
-         //---
-         // Get the geometry from the image handler.  Since we're in "identity"
-         // mode use the inputs for the outputs.
-         //---
-         m_geom = ih->getImageGeometry();
+   ossimDrect rect;
+   m_geom->getBoundingRect(rect);
+   ossimDpt midPt = rect.midPoint();
 
-         if ( m_geom.valid() )
-         {
-            // Get the image projection.
-            ossimRefPtr<ossimProjection> proj = m_geom->getProjection();
-            if ( proj.valid() )
-            {
-               ossim_float64 rotation = 0.0;
-               if ( upIsUp() )
-               {
-                  rotation = m_geom->upIsUpAngle();
-               }
-               else if ( northUp() )
-               {
-                  rotation = m_geom->northUpAngle();
-               }
-               else if ( hasRotation() )
-               {
-                  rotation = getRotation();
-               }
+   if ( traceDebug() )
+   {
+      ossimNotify(ossimNotifyLevel_DEBUG) << "\nAffine transform parameters:"
+                                          << "\nrotation:  " << rotation
+                                          << "\nmid point: " << midPt << std::endl;
+   }
 
-               if ( ossim::isnan( rotation ) )
-               {
-                  rotation = 0.0;
-               }
+   m_ivt = new ossimImageViewAffineTransform(-rotation,
+                                             imageSpaceScale.x, // image space scale x
+                                             imageSpaceScale.y, // image space scale y
+                                             1.0,1.0,  //scale x and y
+                                             0.0, 0.0, // translate x,y
+                                             midPt.x, midPt.y); // pivot point
 
-               ossimDpt imageSpaceScale;
-               getImageSpaceScale( imageSpaceScale );
+   if ( m_kwl.find( METERS_KW.c_str() ) || m_kwl.find( DEGREES_X_KW.c_str() ) )
+   {
+      // Set the image view transform scale.
+      initializeIvtScale();
+   }
 
-               ossimDrect rect;
-               m_geom->getBoundingRect(rect);
-               ossimDpt midPt = rect.midPoint();
+   resampler->setImageViewTransform( m_ivt.get() );
 
-               if ( traceDebug() )
-               {
-                  ossimNotify(ossimNotifyLevel_DEBUG)
-                                       << "\nAffine transform parameters:"
-                                       << "\nrotation:  " << rotation
-                                       << "\nmid point: " << midPt << std::endl;
-               }
-
-               m_ivt = new ossimImageViewAffineTransform(-rotation,
-                                                         imageSpaceScale.x, // image space scale x
-                                                         imageSpaceScale.y, // image space scale y
-                                                         1.0,1.0,  //scale x and y
-                                                         0.0, 0.0, // translate x,y
-                                                         midPt.x, midPt.y); // pivot point
-
-               if ( m_kwl.find( METERS_KW.c_str() ) || m_kwl.find( DEGREES_X_KW.c_str() ) )
-               {
-                  // Set the image view transform scale.
-                  initializeIvtScale();
-               }
-
-               resampler->setImageViewTransform( m_ivt.get() );
-            }
-
-         } // Matches: if ( m_geom.valid() )
-
-      } // Matches: if ( ih.valid() )
-
-   } // Matches: if ( sic.valid() 
 
 } // End: createIdentityProjection()
 
@@ -1532,84 +1169,75 @@ void ossimChipProcUtil::initializeIvtScale()
 
 void ossimChipProcUtil::intiailizeProjectionTiePoint()
 {
+   static const char* MODULE = "ossimChipProcUtil::intiailizeProjectionTiePoint()";
+
    // Get the map projection from the output geometry:
    ossimRefPtr<ossimMapProjection> mapProj = getMapProjection();
 
-   if ( mapProj.valid() )
+   if ( !mapProj.valid() )
    {
-      //---
-      // If the output is geographic of there are sensor model inputs, get the tie
-      // using the ground point.
-      //---
-      if ( mapProj->isGeographic() || hasSensorModelInput() )
+      std::string errMsg = "m_projection is null!";
+      throw( ossimException(errMsg) );
+   }
+
+   //---
+   // If the output is geographic of there are sensor model inputs, get the tie
+   // using the ground point.
+   //---
+   if ( mapProj->isGeographic() || hasSensorModelInput() )
+   {
+      ossimGpt tiePoint;
+      tiePoint.makeNan();
+      getTiePoint(tiePoint);
+
+      if ( !tiePoint.hasNans() )
       {
-         ossimGpt tiePoint;
-         tiePoint.makeNan();
-         getTiePoint(tiePoint);
-
-         if ( !tiePoint.hasNans() )
-         {
-            //---
-            // The tie point coordinates currently reflect the UL edge of the UL pixel.
-            // We'll need to shift the tie point bac from the edge to the center base on the
-            // output gsd.
-            //---
-            ossimDpt half_pixel_shift = m_geom->getDegreesPerPixel() * 0.5;
-            tiePoint.lat -= half_pixel_shift.lat;
-            tiePoint.lon += half_pixel_shift.lon;
-            mapProj->setUlTiePoints(tiePoint);
-         }
-         else
-         {
-            std::string errMsg = MODULE;
-            errMsg += " tie point has nans!";
-            throw( ossimException(errMsg) );
-         }
-
-         if ( traceDebug() )
-         {
-            ossimNotify(ossimNotifyLevel_DEBUG)
-                                 << "projection tie point: " << tiePoint << "\n" << MODULE << " exited...\n";
-         }
+         //---
+         // The tie point coordinates currently reflect the UL edge of the UL pixel.
+         // We'll need to shift the tie point bac from the edge to the center base on the
+         // output gsd.
+         //---
+         ossimDpt half_pixel_shift = m_geom->getDegreesPerPixel() * 0.5;
+         tiePoint.lat -= half_pixel_shift.lat;
+         tiePoint.lon += half_pixel_shift.lon;
+         mapProj->setUlTiePoints(tiePoint);
       }
       else
       {
-         //---
-         // TODO: Add test for like input projections and use above geographic tie
-         // code if not.
-         //---
-         ossimDpt tiePoint;
-         tiePoint.makeNan();
-         getTiePoint(tiePoint);
-
-         if ( !tiePoint.hasNans() )
-         {
-            //---
-            // The tie point coordinates currently reflect the UL edge of the UL pixel.
-            // We'll need to shift the tie point bac from the edge to the center base on the
-            // output gsd.
-            //---
-            ossimDpt half_pixel_shift = m_geom->getMetersPerPixel() * 0.5;
-            tiePoint.y -= half_pixel_shift.y;
-            tiePoint.x += half_pixel_shift.x;
-            mapProj->setUlTiePoints(tiePoint);
-         }
-         else
-         {
-            std::string errMsg = "Tie point has nans!";
-            throw( ossimException(errMsg) );
-         }
-
-         if ( traceDebug() )
-            ossimNotify(ossimNotifyLevel_DEBUG) << "projection tie point: " << tiePoint << endl;;
+         std::string errMsg = MODULE;
+         errMsg += " tie point has nans!";
+         throw( ossimException(errMsg) );
       }
-
-   } // Matches: if ( mapProj.valid() )
+   }
    else
    {
-      std::string errMsg = "m_projection is null!";
-      throw( ossimException(errMsg) ); 
+      //---
+      // TODO: Add test for like input projections and use above geographic tie
+      // code if not.
+      //---
+      ossimDpt tiePoint;
+      tiePoint.makeNan();
+      getTiePoint(tiePoint);
+
+      if ( !tiePoint.hasNans() )
+      {
+         //---
+         // The tie point coordinates currently reflect the UL edge of the UL pixel.
+         // We'll need to shift the tie point bac from the edge to the center base on the
+         // output gsd.
+         //---
+         ossimDpt half_pixel_shift = m_geom->getMetersPerPixel() * 0.5;
+         tiePoint.y -= half_pixel_shift.y;
+         tiePoint.x += half_pixel_shift.x;
+         mapProj->setUlTiePoints(tiePoint);
+      }
+      else
+      {
+         std::string errMsg = "Tie point has nans!";
+         throw( ossimException(errMsg) );
+      }
    }
+
 }
 
 void ossimChipProcUtil::initializeProjectionGsd()
@@ -1756,7 +1384,7 @@ void ossimChipProcUtil::initializeProjectionGsd()
       getMetersPerPixel(gsd);
 
       // See if the output projection is geo-scaled; if so, make the pixels square in meters.
-      if ( getOutputProjectionType() == ossimChipProcUtil::OSSIM_CHIPPER_PROJ_GEO_SCALED )
+      if ( getOutputProjectionType() == ossimChipProcUtil::GEO_SCALED_PROJ )
       {
          // Pick the best resolution and make them both the same.
          gsd.x = ossim::min<ossim_float64>(gsd.x, gsd.y);
@@ -1773,16 +1401,14 @@ void ossimChipProcUtil::initializeProjectionGsd()
 
 void ossimChipProcUtil::getTiePoint(ossimGpt& tie)
 {
-   std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx;
-
    tie.lat = ossim::nan();
    tie.lon = ossim::nan();
    tie.hgt = 0.0;
 
-   // Loop through dem layers.
+   // Loop through layers.
    ossimGpt chainTiePoint;
-   chainIdx = m_demLayer.begin();
-   while ( chainIdx != m_demLayer.end() )
+   std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx = m_srcLayers.begin();
+   while ( chainIdx != m_srcLayers.end() )
    {
       getTiePoint( (*chainIdx).get(), chainTiePoint );
       if ( tie.hasNans() )
@@ -1802,30 +1428,6 @@ void ossimChipProcUtil::getTiePoint(ossimGpt& tie)
       }
       ++chainIdx;
    }
-
-   // Loop through image layers.
-   chainIdx = m_imgLayer.begin();
-   while ( chainIdx != m_imgLayer.end() )
-   {
-      getTiePoint( (*chainIdx).get(), chainTiePoint );
-      if ( tie.hasNans() )
-      {
-         tie = chainTiePoint;
-      }
-      else
-      {
-         if ( chainTiePoint.lat > tie.lat )
-         {
-            tie.lat = chainTiePoint.lat;
-         }
-         if ( chainTiePoint.lon < tie.lon )
-         {
-            tie.lon = chainTiePoint.lon;
-         }
-      }
-      ++chainIdx;
-   }
-
 }
 
 void ossimChipProcUtil::getTiePoint(ossimSingleImageChain* chain, ossimGpt& tie)
@@ -1881,14 +1483,12 @@ void ossimChipProcUtil::getTiePoint(ossimSingleImageChain* chain, ossimGpt& tie)
 
 void ossimChipProcUtil::getTiePoint(ossimDpt& tie)
 {
-   std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx;
-
    tie.makeNan();
 
    // Loop through dem layers.
    ossimDpt chainTiePoint;
-   chainIdx = m_demLayer.begin();
-   while ( chainIdx != m_demLayer.end() )
+   std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx = m_srcLayers.begin();
+   while ( chainIdx != m_srcLayers.end() )
    {
       getTiePoint( (*chainIdx).get(), chainTiePoint );
       if ( tie.hasNans() )
@@ -1908,89 +1508,58 @@ void ossimChipProcUtil::getTiePoint(ossimDpt& tie)
       }
       ++chainIdx;
    }
-
-   // Loop through image layers.
-   chainIdx = m_imgLayer.begin();
-   while ( chainIdx != m_imgLayer.end() )
-   {
-      getTiePoint( (*chainIdx).get(), chainTiePoint );
-      if ( tie.hasNans() )
-      {
-         tie = chainTiePoint;
-      }
-      else
-      {
-         if ( chainTiePoint.y > tie.y )
-         {
-            tie.y = chainTiePoint.y;
-         }
-         if ( chainTiePoint.x < tie.x )
-         {
-            tie.x = chainTiePoint.x;
-         }
-      }
-      ++chainIdx;
-   }
-
 }
 
 void ossimChipProcUtil::getTiePoint(ossimSingleImageChain* chain, ossimDpt& tie)
 {
-   if (chain && m_geom.valid() )
-   {
-      //---
-      // The view is not set yet in the chain so we get the tie point from the
-      // image handler geometry not from the chain which will come from the
-      // ossimImageRenderer.
-      //---
-      ossimRefPtr<ossimImageHandler> ih = chain->getImageHandler();
-      if ( ih.valid() )
-      {
-         ossimRefPtr<ossimImageGeometry> geom = ih->getImageGeometry();
-         if ( geom.valid() )
-         {
-            geom->getTiePoint( tie, true );
-         }
-
-         if ( tie.hasNans() )
-         {
-            std::string errMsg = "geom->localToWorld returned nan for chain.";
-            errMsg += "\nChain: ";
-            errMsg += chain->getFilename().string();
-            throw ossimException(errMsg);
-         }
-      }
-      else
-      {
-         std::string errMsg = "No geometry for chain: ";
-         errMsg += chain->getFilename().string();
-         throw ossimException(errMsg);
-      }
-   }
-   else
+   if (!chain || !m_geom.valid() )
    {
       std::string errMsg = "ERROR: Null chain passed to method!";
       throw ossimException(errMsg);
    }
 
+   //---
+   // The view is not set yet in the chain so we get the tie point from the
+   // image handler geometry not from the chain which will come from the
+   // ossimImageRenderer.
+   //---
+   ossimRefPtr<ossimImageHandler> ih = chain->getImageHandler();
+   if ( !ih.valid() )
+   {
+      std::string errMsg = "No geometry for chain: ";
+      errMsg += chain->getFilename().string();
+      throw ossimException(errMsg);
+   }
+
+   ossimRefPtr<ossimImageGeometry> geom = ih->getImageGeometry();
+   if ( geom.valid() )
+   {
+      geom->getTiePoint( tie, true );
+   }
+
+   if ( tie.hasNans() )
+   {
+      std::string errMsg = "geom->localToWorld returned nan for chain.";
+      errMsg += "\nChain: ";
+      errMsg += chain->getFilename().string();
+      throw ossimException(errMsg);
+   }
+
    if ( traceDebug() )
    {
-      ossimNotify(ossimNotifyLevel_DEBUG)
-                           << "chain name: " << chain->getFilename()
-                           << "\ntie point:  " << tie << endl;
+      ossimNotify(ossimNotifyLevel_DEBUG) << "chain name: " << chain->getFilename()
+           << "\ntie point:  " << tie << endl;
    }
 }
 
 void ossimChipProcUtil::getMetersPerPixel(ossimDpt& gsd)
 {
    gsd.makeNan();
-
    ossimDpt chainGsd;
-   std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx;
 
    // Loop through dem layers.
-   chainIdx = m_demLayer.begin();
-   while ( chainIdx != m_demLayer.end() )
+   std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx = m_srcLayers.begin();
+   while ( chainIdx != m_srcLayers.end() )
    {
       getMetersPerPixel( (*chainIdx).get(), chainGsd);
       if ( gsd.hasNans() || ( chainGsd.x < gsd.x ) ) 
@@ -1999,51 +1568,34 @@ void ossimChipProcUtil::getMetersPerPixel(ossimDpt& gsd)
       }
       ++chainIdx;
    }
-
-   // Loop through image layers.
-   chainIdx = m_imgLayer.begin();
-   while ( chainIdx != m_imgLayer.end() )
-   {
-      getMetersPerPixel( (*chainIdx).get(), chainGsd);
-      if ( gsd.hasNans() || ( chainGsd.x < gsd.x ) )
-      {
-         gsd = chainGsd;
-      }
-      ++chainIdx;
-   }
-
 }
 
 void ossimChipProcUtil::getMetersPerPixel(ossimSingleImageChain* chain, ossimDpt& gsd)
 {
    static const char MODULE[] = "ossimChipProcUtil::getMetersPerPixel()";
-   if (chain)
-   {
-      ossimRefPtr<ossimImageGeometry> geom = chain->getImageGeometry();
-      if ( geom.valid() )
-      {
-         geom->getMetersPerPixel( gsd );
-         if ( gsd.hasNans() )
-         {
-            std::string errMsg = MODULE;
-            errMsg += "\ngeom->getMetersPerPixel returned nan for chain.";
-            errMsg += "\nChain: ";
-            errMsg += chain->getFilename().string();
-            throw ossimException(errMsg);
-         }
-      }
-      else
-      {
-         std::string errMsg = MODULE;
-         errMsg += "\nNo geometry for chain: ";
-         errMsg += chain->getFilename().string();
-         throw ossimException(errMsg);
-      }
-   }
-   else
+   if (!chain)
    {
       std::string errMsg = MODULE;
       errMsg += " ERROR: Null chain passed to method!";
+      throw ossimException(errMsg);
+   }
+
+   ossimRefPtr<ossimImageGeometry> geom = chain->getImageGeometry();
+   if ( !geom.valid() )
+   {
+      std::string errMsg = MODULE;
+      errMsg += "\nNo geometry for chain: ";
+      errMsg += chain->getFilename().string();
+      throw ossimException(errMsg);
+   }
+
+   geom->getMetersPerPixel( gsd );
+   if ( gsd.hasNans() )
+   {
+      std::string errMsg = MODULE;
+      errMsg += "\ngeom->getMetersPerPixel returned nan for chain.";
+      errMsg += "\nChain: ";
+      errMsg += chain->getFilename().string();
       throw ossimException(errMsg);
    }
 
@@ -2094,23 +1646,8 @@ void ossimChipProcUtil::getSceneCenter(ossimGpt& gpt)
    std::vector<ossimGpt> centerGptArray;
    ossimGpt centerGpt;
 
-   std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx;
-
-   // Loop through dem layers.
-   chainIdx = m_demLayer.begin();
-   while ( chainIdx != m_demLayer.end() )
-   {
-      getSceneCenter( (*chainIdx).get(), centerGpt);
-      if ( !centerGpt.hasNans() )
-      {
-         centerGptArray.push_back( centerGpt );
-      }
-      ++chainIdx;
-   }
-
-   // Loop through image layers.
-   chainIdx = m_imgLayer.begin();
-   while ( chainIdx != m_imgLayer.end() )
+   std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx = m_srcLayers.begin();
+   while ( chainIdx != m_srcLayers.end() )
    {
       getSceneCenter( (*chainIdx).get(), centerGpt);
       if ( !centerGpt.hasNans() )
@@ -2197,13 +1734,9 @@ ossimRefPtr<ossimMapProjection> ossimChipProcUtil::getFirstInputProjection()
    ossimRefPtr<ossimMapProjection> result = 0;
 
    // Get the first image handler.
-   if ( m_demLayer.size() )
+   if ( m_srcLayers.size() )
    {
-      ih = m_demLayer[0]->getImageHandler();
-   }
-   else if ( m_imgLayer.size() )
-   {
-      ih = m_imgLayer[0]->getImageHandler();
+      ih = m_srcLayers[0]->getImageHandler();
    }
 
    if ( ih.valid() )
@@ -2482,16 +2015,14 @@ ossimRefPtr<ossimImageFileWriter> ossimChipProcUtil::createNewWriter() const
 
 void ossimChipProcUtil::propagateOutputProjectionToChains()
 {
-   std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx;
-
    // we need to make sure the outputs are refreshed so they can reset themselves
    // Needed when we are doing interactive update to the GSD and clip window
    ossimRefPtr<ossimRefreshEvent> refreshEvent = new ossimRefreshEvent();
    ossimEventVisitor eventVisitor(refreshEvent.get());
    ossimViewInterfaceVisitor viewVisitor(m_geom.get());
-   // Loop through dem layers.
-   chainIdx = m_demLayer.begin();
-   while ( chainIdx != m_demLayer.end() )
+
+   std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx = m_srcLayers.begin();
+   while ( chainIdx != m_srcLayers.end() )
    {
       viewVisitor.reset();
       eventVisitor.reset();
@@ -2499,160 +2030,50 @@ void ossimChipProcUtil::propagateOutputProjectionToChains()
       (*chainIdx)->accept(eventVisitor);
 
       ossimRefPtr<ossimImageRenderer> resampler = (*chainIdx)->getImageRenderer();
-      if ( resampler.valid() )
-      {
-         //resampler->setView( m_geom.get() );
-         // resampler->propagateEventToOutputs(refreshEvent);
-      }
-      else
+      if ( !resampler.valid() )
       {
          std::string errMsg = "Chain has no resampler!";
          throw( ossimException(errMsg) );
       }
-      ++chainIdx;
-   }
 
-   // Loop through image layers.
-   chainIdx = m_imgLayer.begin();
-   while ( chainIdx != m_imgLayer.end() )
-   {
-      ossimRefPtr<ossimImageRenderer> resampler = (*chainIdx)->getImageRenderer();
-      eventVisitor.reset();
-      viewVisitor.reset();
-      (*chainIdx)->accept(viewVisitor);
-      (*chainIdx)->accept(eventVisitor);
-
-      if ( resampler.valid() )
-      {
-         //         resampler->setView( m_geom.get() );
-         // resampler->propagateEventToOutputs(refreshEvent);
-      }
-      else
-      {
-         std::string errMsg = "Chain has no resampler!";
-         throw( ossimException(errMsg) );
-      }
+      //resampler->setView( m_geom.get() );
+      // resampler->propagateEventToOutputs(refreshEvent);
       ++chainIdx;
    }
 }
 
-ossimRefPtr<ossimImageSource> ossimChipProcUtil::combineLayers(
-      std::vector< ossimRefPtr<ossimSingleImageChain> >& layers) const
+void ossimChipProcUtil::addIndexToRgbLutFilter()
 {
-   ossimRefPtr<ossimImageSource> result = 0;
-
-   if ( layers.size() == 1 )
-   {
-      result = layers[0].get();
-   }
-   else if ( layers.size() > 1 )
-   {
-
-      result = createCombiner();//new ossimImageMosaic;
-
-      std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx = layers.begin();
-      while ( chainIdx != layers.end() )
-      {
-         result->connectMyInputTo( (*chainIdx).get() );
-         ++chainIdx;
-      }
-   }
-
-   return result;
-}
-
-ossimRefPtr<ossimImageSource> ossimChipProcUtil::combineLayers()
-{
-   ossimRefPtr<ossimImageSource> result = 0;
-
-   ossim_uint32 layerCount = (ossim_uint32) (m_demLayer.size() + m_imgLayer.size());
-
-   if ( layerCount )
-   {
-      if ( layerCount == 1 )
-      {
-         if ( m_imgLayer.size() )
-         {
-            result = m_imgLayer[0].get();
-         }
-         else
-         {
-            result = m_demLayer[0].get();
-         }
-      }
-      else
-      {
-         result = createCombiner();//new ossimImageMosaic;
-
-         // Combine the images.  Note we'll put the images on top of the dems.
-         if ( m_imgLayer.size() )
-         {
-            std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx =
-                  m_imgLayer.begin();
-            while ( chainIdx !=  m_imgLayer.end() )
-            {
-               result->connectMyInputTo( (*chainIdx).get() );
-               ++chainIdx;
-            }
-         }
-         if ( m_demLayer.size() ) // Combine any dem layers.
-         {
-            std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx =
-                  m_demLayer.begin();
-            while ( chainIdx != m_demLayer.end() )
-            {
-               result->connectMyInputTo( (*chainIdx).get() );
-               ++chainIdx;
-            }
-         }
-      }
-   }
-
-   return result;
-
-} // End: ossimChipProcUtil::combineLayers
-
-ossimRefPtr<ossimImageSource> ossimChipProcUtil::addIndexToRgbLutFilter(
-      ossimRefPtr<ossimImageSource> &source) const
-{
-   ossimRefPtr<ossimImageSource> result = 0;
-
-   if ( source.valid() )
-   {
-      ossimRefPtr<ossimIndexToRgbLutFilter> lut = new ossimIndexToRgbLutFilter();
-      ossimFilename lutFile;
-      lutFile.string() = m_kwl.findKey( LUT_FILE_KW );
-      if ( lutFile.exists() )
-      {
-         lut->setLut(lutFile);
-
-         // Connect to dems:
-         lut->connectMyInputTo( source.get() );
-
-         // Note sure about this.  Make option maybe? (drb)
-         lut->setMode(ossimIndexToRgbLutFilter::REGULAR);
-
-         // Set as color source for bump shade.
-         result = lut.get();
-      }
-      else
-      {
-         std::string errMsg = "Color table does not exists: ";
-         errMsg += lutFile.string();
-         throw ossimException(errMsg);
-      }
-   }
-   else
+   if ( !m_procChain.valid() )
    {
       std::string errMsg = "ERROR: Null source passed to method!";
       throw ossimException(errMsg);
    }
 
-   return result;
+   ossimRefPtr<ossimIndexToRgbLutFilter> lut = new ossimIndexToRgbLutFilter();
+   ossimFilename lutFile;
+   lutFile.string() = m_kwl.findKey( LUT_FILE_KW );
+   if ( !lutFile.exists() )
+   {
+      std::string errMsg = "Color table does not exists: ";
+      errMsg += lutFile.string();
+      throw ossimException(errMsg);
+   }
+
+   lut->setLut(lutFile);
+
+   // Connect to dems:
+   lut->connectMyInputTo( m_procChain.get() );
+
+   // Note sure about this.  Make option maybe? (drb)
+   lut->setMode(ossimIndexToRgbLutFilter::REGULAR);
+
+   // Set as color source for bump shade.
+   m_procChain = lut.get();
 }
 
-ossimRefPtr<ossimImageSource> ossimChipProcUtil::addScalarRemapper(
-      ossimRefPtr<ossimImageSource> &source, ossimScalarType scalar) const
+ossimRefPtr<ossimImageSource>
+ossimChipProcUtil::addScalarRemapper(ossimRefPtr<ossimImageSource> &source, ossimScalarType scalar) const
 {
    ossimRefPtr<ossimImageSource> result = 0;
 
@@ -2713,9 +2134,8 @@ bool ossimChipProcUtil::setupChainHistogram( ossimRefPtr<ossimSingleImageChain>&
                {
                   if(traceDebug())
                   {
-                     ossimNotify(ossimNotifyLevel_WARN)
-                                          << MODULE << " WARNING:"
-                                          << "\nCould not open:  " << f << "\n";
+                     ossimNotify(ossimNotifyLevel_WARN)  << MODULE << " WARNING:"
+                           << "\nCould not open:  " << f << "\n";
                   }
                }
             }
@@ -3327,6 +2747,32 @@ bool ossimChipProcUtil::hasHistogramOperation() const
    return result;
 }
 
+void ossimChipProcUtil::combineLayers()
+{
+   static const char MODULE[] = "ossimChipperUtil::combineLayers()";
+
+   m_procChain = 0;
+   ossim_uint32 layerCount = (ossim_uint32) m_srcLayers.size();
+
+   if ( layerCount  == 1 )
+   {
+      m_procChain = m_srcLayers[0].get();
+   }
+   else if (layerCount  > 1)
+   {
+      m_procChain = createCombiner();//new ossimImageMosaic;
+
+         std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx =
+               m_srcLayers.begin();
+         while ( chainIdx !=  m_srcLayers.end() )
+         {
+            m_procChain->connectMyInputTo( (*chainIdx).get() );
+            ++chainIdx;
+         }
+      }
+   }
+}
+
 bool ossimChipProcUtil::isDemFile(const ossimFilename& file) const
 {
    bool result = false;
@@ -3377,13 +2823,7 @@ ossimScalarType ossimChipProcUtil::getOutputScalarType() const
 
 bool ossimChipProcUtil::scaleToEightBit() const
 {
-   bool result = false;
-   if ( ( m_operation == OSSIM_CHIPPER_OP_COLOR_RELIEF ) || // Always 8 bit...
-         ( getOutputScalarType() == OSSIM_UINT8 ) )
-   {
-      result = true;
-   }
-   return result;
+   return ( getOutputScalarType() == OSSIM_UINT8 );
 }
 
 bool ossimChipProcUtil::snapTieToOrigin() const
@@ -3461,7 +2901,7 @@ bool ossimChipProcUtil::northUp() const
 
 bool ossimChipProcUtil::isIdentity() const
 {
-   return (m_operation == OSSIM_CHIPPER_OP_CHIP);
+   return (getOutputProjectionType() == IDENTITY);
 }
 
 bool ossimChipProcUtil::keyIsTrue( const std::string& key ) const
@@ -3510,8 +2950,8 @@ bool ossimChipProcUtil::hasSensorModelInput()
    bool result = false;
 
    // Test image layers.
-   std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx = m_imgLayer.begin();
-   while ( chainIdx != m_imgLayer.end() )
+   std::vector< ossimRefPtr<ossimSingleImageChain> >::iterator chainIdx = m_srcLayers.begin();
+   while ( chainIdx != m_srcLayers.end() )
    {
       // Get the image handler:
       ossimRefPtr<ossimImageHandler> ih = (*chainIdx)->getImageHandler();
@@ -3536,38 +2976,6 @@ bool ossimChipProcUtil::hasSensorModelInput()
          }
       }   
       ++chainIdx;
-   }
-
-   if ( !result )
-   {
-      // Test dem layers.
-      chainIdx = m_demLayer.begin();
-      while ( chainIdx != m_demLayer.end() )
-      {
-         // Get the image handler:
-         ossimRefPtr<ossimImageHandler>  ih = (*chainIdx)->getImageHandler();
-         if ( ih.valid() )
-         {
-            // Get the geometry from the first image handler.      
-            ossimRefPtr<ossimImageGeometry> geom = ih->getImageGeometry();
-            if ( geom.valid() )
-            {
-               // Get the image projection.
-               ossimRefPtr<ossimProjection> proj = geom->getProjection();
-               if ( proj.valid() )
-               {
-                  // Cast and assign to result.
-                  ossimMapProjection* mapProj = PTR_CAST( ossimMapProjection, proj.get() );
-                  if ( !mapProj )
-                  {
-                     result = true;
-                     break;
-                  }
-               }
-            }
-         }   
-         ++chainIdx;
-      }
    }
 
    return result;
@@ -3603,25 +3011,18 @@ void  ossimChipProcUtil::initializeSrcKwl()
 ossim_uint32 ossimChipProcUtil::getNumberOfInputs() const
 {
    ossim_uint32 result = 0;
-   // Look for dems, e.g. dem0.file: foo.tif
-   ossimString regularExpression = "dem[0-9]*\\.file";
+   ossimString regularExpression = "input_source[0-9]*\\.file";
    result = m_kwl.getNumberOfKeysThatMatch( regularExpression );
 
-   // Look for images, e.g. image0.file: foo.tif
-   regularExpression = "image[0-9]*\\.file";
-   result += m_kwl.getNumberOfKeysThatMatch( regularExpression );
-
    if ( m_srcKwl.getSize() )
-   {
-      result += m_srcKwl.numberOf( DEM_KW.c_str() );
-      result += m_srcKwl.numberOf( IMG_KW.c_str() );
-   }
+      result += m_srcKwl.numberOf( INPUT_SOURCE_KW.c_str() );
+
    return result;
 }
 
 ossimChipProcUtil::OutputProjectionType ossimChipProcUtil::getOutputProjectionType() const
 {
-   OutputProjectionType result = ossimChipProcUtil::OSSIM_CHIPPER_PROJ_UNKNOWN;
+   OutputProjectionType result = ossimChipProcUtil::UNKNOWN_PROJ;
    const char* op  = m_kwl.find(ossimKeywordNames::PROJECTION_KW);
    if ( op )
    {
@@ -3629,19 +3030,23 @@ ossimChipProcUtil::OutputProjectionType ossimChipProcUtil::getOutputProjectionTy
       os.downcase();
       if (os == "geo")
       {
-         result = ossimChipProcUtil::OSSIM_CHIPPER_PROJ_GEO;
+         result = ossimChipProcUtil::GEO_PROJ;
       }
       else if (os == "geo-scaled")
       {
-         result = ossimChipProcUtil::OSSIM_CHIPPER_PROJ_GEO_SCALED;
+         result = ossimChipProcUtil::GEO_SCALED_PROJ;
       }
       else if ( os == "input" )
       {
-         result = ossimChipProcUtil::OSSIM_CHIPPER_PROJ_INPUT;
+         result = ossimChipProcUtil::INPUT_PROJ;
       }
       else if ( (os == "utm") || (os == "ossimutmprojection") )
       {
-         result = ossimChipProcUtil::OSSIM_CHIPPER_PROJ_UTM;
+         result = ossimChipProcUtil::UTM_PROJ;
+      }
+      else if ( (os == "identity") || (os == "none") )
+      {
+         result = ossimChipProcUtil::IDENTITY;
       }
    }
    return result;
@@ -3756,7 +3161,7 @@ void ossimChipProcUtil::setUsage(ossimArgumentParser& ap)
    au->addCommandLineOption( "--brightness", "<brightness>\nApply brightness to input image(s). Valid range: -1.0 to 1.0" );
    au->addCommandLineOption("--central-meridian","<central_meridian_in_decimal_degrees>\nNote if set this will be used for the central meridian of the projection.  This can be used to lock the utm zone.");
    au->addCommandLineOption("--color-table | --lut","<color-table.kwl>\nKeyword list containing color table for color-relief option.");
-   au->addCommandLineOption( "--contrast", "<constrast>\nApply contrast to input image(s). Valid range: -1.0 to 1.0" );
+   au->addCommandLineOption("--contrast", "<constrast>\nApply contrast to input image(s). Valid range: -1.0 to 1.0" );
    au->addCommandLineOption("--cut-wms-bbox", "<minx>,<miny>,<maxx>,<maxy>\nSpecify a comma separated list in the format of a WMS BBOX.\nThe units are in the units of the projector defined by the --srs key");
    au->addCommandLineOption("--cut-wms-bbox-ll", "<minx>,<miny>,<maxx>,<maxy>\nSpecify a comma separated list in the format of a WMS BBOX.\nThe units are always decimal degrees");
    au->addCommandLineOption("--cut-width", "<width>\nSpecify the cut width in pixel");
@@ -3773,9 +3178,7 @@ void ossimChipProcUtil::setUsage(ossimArgumentParser& ap)
    au->addCommandLineOption("--hemisphere", "<hemisphere>\nSpecify a projection hemisphere if supported. E.g. UTM projection. This will lock the hemisphere even if input scene center is the other hemisphere. Valid values for UTM are \"N\" and \"S\"");
    au->addCommandLineOption("--histogram-op", "<operation>\nHistogram operation to perform. Valid operations are \"auto-minmax\", \"std-stretch-1\", \"std-stretch-2\" and \"std-stretch-3\".");
    au->addCommandLineOption("--image-space-scale","<x> <y>\nSpecifies an image space scale for x and y direction. \"chip\" operation only.");
-   au->addCommandLineOption("--input-dem", "<dem> Input dem to process.");
-   au->addCommandLineOption("--input-img", "<image> Input image to process.");
-   au->addCommandLineOption("--input-src","<file.src> Input source file list keyword list with list of dems or images or both to process.");
+   au->addCommandLineOption("--input-source", "<file> Input raster file to process.");
    au->addCommandLineOption("--meters", "<meters>\nSpecifies an override for the meters per pixel");
    au->addCommandLineOption("-n or --north-up", "Rotates image North up. \"chip\" operation only.");
    au->addCommandLineOption("--options","<options.kwl>  This can be all or part of the application options.  To get a template you can turn on trace to the ossimChipProcUtil class by adding \"-T ossimChipProcUtil\" to your command.");
@@ -3789,6 +3192,7 @@ void ossimChipProcUtil::setUsage(ossimArgumentParser& ap)
    au->addCommandLineOption("--scale-to-8-bit", "Scales the output to unsigned eight bits per band. This option has been deprecated by the newer \"--output-radiometry\" option.");
    au->addCommandLineOption("--sharpen-mode", "<mode> Applies sharpness to image chain(s). Valid modes: \"light\", \"heavy\"");
    au->addCommandLineOption("--snap-tie-to-origin", "Snaps tie point to projection origin so that (tie-origin)/gsd come out on an even integer boundary.");
+   au->addCommandLineOption("--src-file","<file.src> Input source file list keyword list with list of dems or images or both to process.");
    au->addCommandLineOption("--srs","<src_code>\nSpecify a spatial reference system(srs) code for the output projection. Example: --srs EPSG:4326");
    au->addCommandLineOption("-t or --thumbnail", "<max_dimension>\nSpecify a thumbnail resolution.\nScale will be adjusted so the maximum dimension = argument given.");
    au->addCommandLineOption("--three-band-out", "Force three band output even if input is not. Attempts to map bands to RGB if possible.");
@@ -3797,11 +3201,6 @@ void ossimChipProcUtil::setUsage(ossimArgumentParser& ap)
    au->addCommandLineOption("-w or --writer","<writer>\nSpecifies the output writer.  Default uses output file extension to determine writer. For valid output writer types use: \"ossim-info --writers\"\n");
    au->addCommandLineOption("--writer-prop", "<writer-property>\nPasses a name=value pair to the writer for setting it's property. Any number of these can appear on the line.");
    au->addCommandLineOption("--zone", "<zone>\nSpecify a projection zone if supported.  E.g. UTM projection. This will lock the zone even if input scene center is in another zone. Valid values for UTM are \"1\" to \"60\"");
-   au->addCommandLineOption("--2cmv-old-input-band", "<band>\nBand to use for two color multi view old input.\n");
-   au->addCommandLineOption("--2cmv-new-input-band", "<band>\nBand to use for two color multi view new input.\n");
-   au->addCommandLineOption("--2cmv-red-output-source", "<source>\nTwo color multi view source input for red output.  Either, old, new, or mp(min pix).  Default=old.\n");
-   au->addCommandLineOption("--2cmv-green-output-source", "<source>\nTwo color multi view source input for green output.  Either, old, new, or mp(min pix).  Default=new.\n");
-   au->addCommandLineOption("--2cmv-blue-output-source", "<source>\nTwo color multi view source input for blue output.  Either, old, new, or mp(min pix).  Default=new.\n");
    au->addCommandLineOption("--combiner-type", "<type>\nossimBlendMosaic, ossimFeatherMosaic, ossimImageMosaic.  Default: ossimImageMosaic.  Example --combiner-type ossimImageMosaic\n");
 }
 
