@@ -1,13 +1,9 @@
-//*******************************************************************
-// Copyright (C) 2000 ImageLinks Inc.
+//**************************************************************************************************
 //
-// License:  LGPL
+//     OSSIM Open Source Geospatial Data Processing Library
+//     See top level LICENSE.txt file for license information
 //
-// See LICENSE.txt file in the top level directory for more details.
-//
-// Author:  Oscar Kramer
-//
-//*******************************************************************
+//**************************************************************************************************
 //  $Id$
 
 #include <ossim/util/ossimViewshedUtil.h>
@@ -31,6 +27,11 @@
 #include <ossim/imaging/ossimImageWriterFactoryRegistry.h>
 #include <ossim/imaging/ossimMemoryImageSource.h>
 #include <ossim/imaging/ossimIndexToRgbLutFilter.h>
+
+const char* ossimSlopeUtil::DESCRIPTION =
+      "Computes bitmap image representing the viewshed from specified location using only "
+      "DEM information.";
+
 
 ossimViewshedUtil::ossimViewshedUtil()
 :   m_obsHgtAbvTer (1.5),

@@ -1,10 +1,9 @@
-//*******************************************************************
+//**************************************************************************************************
 //
-// License:  See top level LICENSE.txt file.
-// 
-// Author: Oscar Kramer
+//     OSSIM Open Source Geospatial Data Processing Library
+//     See top level LICENSE.txt file for license information
 //
-//*************************************************************************
+//**************************************************************************************************
 // $Id: ossimSlopeUtil.h 23443 2015-07-17 15:57:00Z okramer $
 
 #ifndef ossimSlopeUtil_HEADER
@@ -63,6 +62,9 @@ public:
    virtual void abort() {}
 
    virtual ossimString getClassName() const { return "ossimSlopeUtil"; }
+
+   /** Used by ossimUtilityFactory */
+   static ossimString DESCRIPTION;
 
 protected:
    bool initializeChain();

@@ -75,6 +75,8 @@ public:
 
    virtual ossimString getClassName() const { return "ossimViewshedUtil"; }
 
+   /** Used by ossimUtilityFactory */
+   static const char* DESCRIPTION;
 
 protected:
    class Radial
