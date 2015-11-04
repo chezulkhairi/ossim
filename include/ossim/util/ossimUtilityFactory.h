@@ -26,8 +26,7 @@ public:
 
    /*!
     * This should return the type name of all objects in all factories.
-    * This is the name used to construct the objects dynamically and this
-    * name must be unique.
+    * This is the name used to construct the objects dynamically and this name must be unique.
     */
    virtual void getTypeNameList(std::vector<ossimString>& typeList) const;
 
