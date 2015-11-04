@@ -75,6 +75,9 @@ public:
     */
    virtual bool initialize(ossimArgumentParser& ap);
 
+   /** Used by ossimUtilityFactory */
+   static const char* DESCRIPTION;
+
 protected:
 
    virtual void initializeChain();

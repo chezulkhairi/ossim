@@ -106,6 +106,11 @@ public:
    virtual void abort();
 
    /**
+    * Overrides base class implementation to indicate this class supports getChip() calls.
+    */
+   virtual bool isChipProcessor() const { return true; }
+
+   /**
    * The meat and potatos of this class. Performs an execute on specified rect.
    */
    ossimRefPtr<ossimImageData> getChip(const ossimGrect& gnd_rect);

@@ -1,8 +1,9 @@
-//*******************************************************************
+//**************************************************************************************************
 //
-// License:  See top level LICENSE.txt file.
+//     OSSIM Open Source Geospatial Data Processing Library
+//     See top level LICENSE.txt file for license information
 //
-//*************************************************************************
+//**************************************************************************************************
 // $Id$
 
 #ifndef ossimUtility_HEADER
@@ -62,16 +63,6 @@ public:
    virtual void clear() = 0;
 
    /**
-    * Returns the name of the utility/service. Intended to populate a GUI list item.
-    */
-   virtual ossimString getName() = 0;
-
-   /**
-    * Returns the description of the utility/service. Intended to populate a GUI list item.
-    */
-   virtual ossimString getDescription() = 0;
-
-   /**
     * Kills current (asynchronous) process. Defaults to do nothing.
     */
    virtual void abort() {}
@@ -90,6 +81,11 @@ public:
    virtual const ossimObject* getObject() const  { return this; }
    virtual ossimListenerManager* getManager()  { return this; };
    virtual ossimString getClassName() const { return "ossimUtility"; }
+
+   // NOTE: The ossimUtilityFactory::getCapabilities() needs to access a brief description of each
+   // utility. For convenience, the ossimUtility-derived (final) classes should declare a public
+   // static member to hold the description string. See ossimViewshedUtility for an example.
+   // static const char* DESCRIPTION;
 
 private:
    bool readFile(const ossimFilename& filename, ossimString& contents) const;
