@@ -4,7 +4,6 @@
 //     See top level LICENSE.txt file for license information
 //
 //**************************************************************************************************
-// $Id$
 
 #ifndef ossimUtility_HEADER
 #define ossimUtility_HEADER

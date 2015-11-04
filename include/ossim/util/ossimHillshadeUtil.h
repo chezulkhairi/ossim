@@ -1,20 +1,9 @@
-//----------------------------------------------------------------------------
+//**************************************************************************************************
 //
-// File: ossimHillshadeUtil.h
-// 
-// License:  LGPL
-// 
-// See LICENSE.txt file in the top level directory for more details.
+//     OSSIM Open Source Geospatial Data Processing Library
+//     See top level LICENSE.txt file for license information
 //
-// Author:  David Burken
-//
-// Description:
-// 
-// Utility class to for chipping out images. , orthorectifying imagery with an
-// added slant toward doing digital elevation model(DEM) operations.
-// 
-//----------------------------------------------------------------------------
-// $Id: ossimHillshadeUtil.h 23423 2015-07-13 19:07:38Z dburken $
+//**************************************************************************************************
 
 #ifndef ossimHillshadeUtil_HEADER
 #define ossimHillshadeUtil_HEADER 1
@@ -41,20 +30,6 @@ class ossimImageViewAffineTransform;
 class ossimIrect;
 class ossimKeywordlist;
 
-/**
- * @brief ossimHillshadeUtil class.
- *
- * This is a utility class to orthorectify imagery with an added slant toward
- * doing digital elevation model(DEM) operations.
- *
- * See the ossim-dem application for a code usage example.
- *
- * @note Almost all methods use throw for stack unwinding.  This is not in
- * method declarations to alleviate build errors on windows.  Sorry...
- *
- * @note "bumpshade" and "hillshade" intermixed throughout.  The class to do
- * a hillshade is the ossimBumpShadeTileSource.
- */
 class OSSIM_DLL ossimHillshadeUtil : public ossimChipProcUtil
 {
 public:
@@ -87,6 +62,8 @@ protected:
 
    /** @brief Hidden from use assignment operator. */
    const ossimHillshadeUtil& operator=( const ossimHillshadeUtil& rhs );
+
+   std::vector< ossimRefPtr<ossimSingleImageChain> > m_colorLayers;
 
 };
 

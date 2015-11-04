@@ -1,14 +1,9 @@
-//*******************************************************************
-// Copyright (C) 2000 ImageLinks Inc.
+//**************************************************************************************************
 //
-// License:  LGPL
+//     OSSIM Open Source Geospatial Data Processing Library
+//     See top level LICENSE.txt file for license information
 //
-// See LICENSE.txt file in the top level directory for more details.
-//
-// Author:  Oscar Kramer
-//
-//*******************************************************************
-//  $Id: ossimSlopeUtil.cpp 23450 2015-07-27 13:58:00Z okramer $
+//**************************************************************************************************
 
 #include <ossim/util/ossimSlopeUtil.h>
 #include <ossim/init/ossimInit.h>

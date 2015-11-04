@@ -4,7 +4,6 @@
 //     See top level LICENSE.txt file for license information
 //
 //**************************************************************************************************
-//  $Id: ossimHLZUtil.cpp 23465 2015-08-13 13:36:26Z okramer $
 
 #include <ossim/util/ossimHLZUtil.h>
 

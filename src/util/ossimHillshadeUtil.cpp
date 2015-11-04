@@ -1,11 +1,9 @@
-//----------------------------------------------------------------------------
+//**************************************************************************************************
 //
-//                               OSSIM
-// 
-// License:  See LICENSE.txt file in the top level directory for  details.
+//     OSSIM Open Source Geospatial Data Processing Library
+//     See top level LICENSE.txt file for license information
 //
-//----------------------------------------------------------------------------
-// $Id$
+//**************************************************************************************************
 
 #include <ossim/base/ossimArgumentParser.h>
 #include <ossim/base/ossimApplicationUsage.h>
@@ -67,6 +65,7 @@ static const std::string LUT_FILE_KW             = "lut_file";
 static const std::string COLOR_BLUE_KW           = "color_blue";
 static const std::string COLOR_GREEN_KW          = "color_green";
 static const std::string COLOR_RED_KW            = "color_red";
+static const std::string COLOR_SOURCE_KW         = "color_source";
 static const std::string GAIN_KW                 = "gain";
 
 const char*  ossimHillshadeUtil::DESCRIPTION =
@@ -131,6 +130,16 @@ bool ossimHillshadeUtil::initialize(ossimArgumentParser& ap)
       m_kwl.addPair( COLOR_BLUE_KW,  tempString3 );
    }
 
+   int color_source_idx = 0;
+   while( ap.read("--color-source", stringParam1) )
+   {
+      ossimString key = COLOR_SOURCE_KW;
+      key += ossimString::toString(color_source_idx++);
+      key += ".";
+      key += ossimKeywordNames::FILE_KW;
+      m_kwl.addPair(key.string(), tempString1 );
+   }
+
    if ( ap.read("--elevation", stringParam1) )
    {
       m_kwl.addPair( std::string(ossimKeywordNames::ELEVATION_ANGLE_KW), tempString1 );
@@ -149,20 +158,24 @@ void ossimHillshadeUtil::initializeChain()
 {
    static const char MODULE[] = "ossimHillshadeUtil::initializeChain";
 
-   // Combine the dems.
-   ossimRefPtr<ossimImageSource> demSource = combineLayers( m_demLayer );
+   combineLayers();
 
    // Set up the normal source.
    ossimRefPtr<ossimImageToPlaneNormalFilter> normSource = new ossimImageToPlaneNormalFilter;
 
-   //---
    // Set the track scale flag to true.  This enables scaling the surface
    // normals by the GSD in order to maintain terrain proportions.
-   //---
    normSource->setTrackScaleFlag(true);
 
-   // Connect to dems.
-   normSource->connectMyInputTo( demSource.get() );
+   // Connect to input source which is the full processing chain set up so far:
+   normSource->connectMyInputTo( m_procChain.get() );
+
+
+
+
+   // TODO: Replace old imgLayer with local colorLayers
+
+
 
    // Set the smoothness factor.
    ossim_float64 gain = 1.0;
@@ -170,6 +183,8 @@ void ossimHillshadeUtil::initializeChain()
    if ( lookup.size() )
       gain = lookup.toFloat64();
    normSource->setSmoothnessFactor(gain);
+
+   m_procChain = normSource.get();
 
    ossimRefPtr<ossimImageSource> colorSource = 0;
    if ( hasLutFile() )
@@ -182,7 +197,7 @@ void ossimHillshadeUtil::initializeChain()
             << "Choosing color table of image(s).\n";
       }
 
-      colorSource = addIndexToRgbLutFilter( demSource );
+      colorSource = addIndexToRgbLutFilter();
    }
    else
    {
@@ -283,8 +298,9 @@ void ossimHillshadeUtil::setUsage(ossimArgumentParser& ap)
    au->setCommandLineUsage(usageString);
 
    // Add arguments.
-   au->addCommandLineOption("--azimuth", "<azimuth>\nhillshade option - Light source azimuth angle for bump shade.\nRange: 0 to 360, Default = 180.0");
-   au->addCommandLineOption("--color","<r> <g> <b>\nhillshade option - Set the red, green and blue color values to be used with hillshade.\nThis option can be used with or without an image source for color.\nRange 0 to 255, Defualt r=255, g=255, b=255");
+   au->addCommandLineOption("--azimuth", "<azimuth>\nLight source azimuth angle for bump shade.\nRange: 0 to 360, Default = 180.0");
+   au->addCommandLineOption("--color","<r> <g> <b>\nSet the red, green and blue color values to be used with hillshade.\nRange 0 to 255, Defualt r=255, g=255, b=255");
+   au->addCommandLineOption("--color-source","<file>\nSpecifies the image file to use as a color source instead of a fixed RGB value.");
    au->addCommandLineOption("--elevation", "<elevation>\nhillshade option - Light source elevation angle for bumb shade.\nRange: 0 to 90, Default = 45.0");
    au->addCommandLineOption("--exaggeration", "<factor>\nMultiplier for elevation values when computing surface normals. Has the effect of lengthening shadows for oblique lighting.\nRange: .0001 to 50000, Default = 1.0");
 
