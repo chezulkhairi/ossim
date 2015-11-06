@@ -18,10 +18,10 @@ class OSSIM_DLL ossimUtilityFactoryBase : public ossimObjectFactory
 {
 public:
    virtual ossimObject* createObject(const ossimString& typeName) const
-   { return createUtility(typeName); }
+   { return (ossimObject*) createUtility(typeName); }
 
    virtual ossimObject* createObject(const ossimKeywordlist& kwl, const char* prefix=0) const
-   { return createUtility(kwl, prefix); }
+   { return (ossimObject*) createUtility(kwl, prefix); }
 
    virtual ossimUtility* createUtility(const ossimString& typeName) const=0;
 

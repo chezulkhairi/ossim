@@ -5,8 +5,8 @@
 //
 //**************************************************************************************************
 
-#ifndef ossimUtility_HEADER
-#define ossimUtility_HEADER
+#ifndef ossimUtilityManager_HEADER
+#define ossimUtilityManager_HEADER
 
 #include <ossim/base/ossimFactoryListInterface.h>
 #include <ossim/util/ossimUtilityFactoryBase.h>

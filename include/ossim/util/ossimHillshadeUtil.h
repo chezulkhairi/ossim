@@ -62,9 +62,6 @@ protected:
 
    /** @brief Hidden from use assignment operator. */
    const ossimHillshadeUtil& operator=( const ossimHillshadeUtil& rhs );
-
-   std::vector< ossimRefPtr<ossimSingleImageChain> > m_colorLayers;
-
 };
 
 #endif /* #ifndef ossimHillshadeUtil_HEADER */

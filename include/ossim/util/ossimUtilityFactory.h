@@ -37,13 +37,12 @@ public:
    virtual void getCapabilities(std::map<std::string, std::string>& capabilities) const;
 
 protected:
-   ossimUtilityFactory(){}
+   ossimUtilityFactory();
    ossimUtilityFactory(const ossimUtilityFactory&){}
    void operator = (const ossimUtilityFactory&){}
 
    static ossimUtilityFactory* s_Instance;
 
-TYPE_DATA
 };
 
 #endif
