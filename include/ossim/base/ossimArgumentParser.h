@@ -10,6 +10,7 @@
 #include <ossim/base/ossimConstants.h>
 #include <ossim/base/ossimString.h>
 #include <map>
+#include <vector>
 #include <string>
 #include <iosfwd>
 
@@ -40,44 +41,64 @@ public:
          std::string*    theString;
       };
       
+      /**
+       * Copy constructor enables storing params in a std::vector. The parameter will necessarily
+       * assume ownership of theValue pointer for later deletion;
+       */
+      ossimParameter(const ossimParameter& p);
+      ~ossimParameter();
+
+
       ossimParameter(float& value)
+      : theCopiedFlag(false)
       {
          theType = OSSIM_FLOAT_PARAMETER; theValue.theFloat = &value;
       }
       
       ossimParameter(double& value)
+      : theCopiedFlag(false)
       {
          theType = OSSIM_DOUBLE_PARAMETER; theValue.theDouble = &value;
       }
       
       ossimParameter(int& value)
+      : theCopiedFlag(false)
       {
          theType = OSSIM_INT_PARAMETER; theValue.theInt = &value;
       }
       
       ossimParameter(unsigned int& value)
+      : theCopiedFlag(false)
       {
          theType = OSSIM_UNSIGNED_INT_PARAMETER; theValue.theUint = &value;
       }
       
       ossimParameter(std::string& value)
+      : theCopiedFlag(false)
       {
          theType = OSSIM_STRING_PARAMETER; theValue.theString = &value;
       }
       
       ossimParameter(ossimString& value)
+      : theCopiedFlag(false)
       {
-         theType = OSSIM_STRING_PARAMETER; theValue.theString =
-                                              &(value.string());
+         theType = OSSIM_STRING_PARAMETER; theValue.theString = &(value.string());
       }
       
       bool valid(const char* str) const;
       bool assign(const char* str);
 
+      ossimString& getValue() { return theValueString; }
+
    protected:
       
       ossimParameterType   theType;
       ossimValueUnion      theValue;
+
+      // Maintains copy of param literal to facilitate populating vector of params without
+      // memory leak in support of variable-length arguments.
+      ossimString          theValueString;
+      bool                 theCopiedFlag; // true if copy constructor used (for deleting allocated mem
    };
    
    /** return return true if specified string is an option in the form of
@@ -146,22 +167,30 @@ public:
     * return false.
     */
    bool read(const std::string& str);
-   bool read(const std::string& str, ossimParameter value1);
-   bool read(const std::string& str, ossimParameter value1,
-             ossimParameter value2);
-   bool read(const std::string& str, ossimParameter value1,
-             ossimParameter value2, ossimParameter value3);
-   bool read(const std::string& str, ossimParameter value1,
-             ossimParameter value2, ossimParameter value3,
-             ossimParameter value4);
-   bool read(const std::string& str, ossimParameter value1,
-             ossimParameter value2, ossimParameter value3,
-             ossimParameter value4, ossimParameter value5);
-   bool read(const std::string& str, ossimParameter value1,
-             ossimParameter value2, ossimParameter value3,
-             ossimParameter value4, ossimParameter value5,
-             ossimParameter value6);
+   bool read(const std::string& str, ossimParameter& value1);
+   bool read(const std::string& str, ossimParameter& value1,
+             ossimParameter& value2);
+   bool read(const std::string& str, ossimParameter& value1,
+             ossimParameter& value2, ossimParameter& value3);
+   bool read(const std::string& str, ossimParameter& value1,
+             ossimParameter& value2, ossimParameter& value3,
+             ossimParameter& value4);
+   bool read(const std::string& str, ossimParameter& value1,
+             ossimParameter& value2, ossimParameter& value3,
+             ossimParameter& value4, ossimParameter& value5);
+   bool read(const std::string& str, ossimParameter& value1,
+             ossimParameter& value2, ossimParameter& value3,
+             ossimParameter& value4, ossimParameter& value5,
+             ossimParameter& value6);
    
+   /**
+    * Alternate form for reading variable length arguments.
+    * @param str The option string (with "-" or "--")
+    * @param param_list Vector to contain results. Always cleared before populating
+    * @return True if option found (param_list may be empty f no args followed).
+    */
+   bool read(const std::string& str, std::vector<ossimParameter>& param_list);
+
    /**
 <<<<<<< Updated upstream
 =======
@@ -189,14 +218,14 @@ public:
     * remove the from the list of arguments.
     */
    bool read(int pos, const std::string& str);
-   bool read(int pos, const std::string& str, ossimParameter value1);
-   bool read(int pos, const std::string& str, ossimParameter value1,
-             ossimParameter value2);
-   bool read(int pos, const std::string& str, ossimParameter value1,
-             ossimParameter value2, ossimParameter value3);
-   bool read(int pos, const std::string& str, ossimParameter value1,
-             ossimParameter value2, ossimParameter value3,
-             ossimParameter value4);
+   bool read(int pos, const std::string& str, ossimParameter& value1);
+   bool read(int pos, const std::string& str, ossimParameter& value1,
+             ossimParameter& value2);
+   bool read(int pos, const std::string& str, ossimParameter& value1,
+             ossimParameter& value2, ossimParameter& value3);
+   bool read(int pos, const std::string& str, ossimParameter& value1,
+             ossimParameter& value2, ossimParameter& value3,
+             ossimParameter& value4);
    
    
    enum ossimErrorSeverity
