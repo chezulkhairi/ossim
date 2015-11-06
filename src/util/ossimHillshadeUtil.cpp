@@ -158,24 +158,13 @@ void ossimHillshadeUtil::initializeChain()
 {
    static const char MODULE[] = "ossimHillshadeUtil::initializeChain";
 
-   combineLayers();
+   m_procChain = combineLayers(m_srcLayers);
+   bool hasLUT = hasLutFile();
 
    // Set up the normal source.
    ossimRefPtr<ossimImageToPlaneNormalFilter> normSource = new ossimImageToPlaneNormalFilter;
-
-   // Set the track scale flag to true.  This enables scaling the surface
-   // normals by the GSD in order to maintain terrain proportions.
    normSource->setTrackScaleFlag(true);
-
-   // Connect to input source which is the full processing chain set up so far:
    normSource->connectMyInputTo( m_procChain.get() );
-
-
-
-
-   // TODO: Replace old imgLayer with local colorLayers
-
-
 
    // Set the smoothness factor.
    ossim_float64 gain = 1.0;
@@ -184,29 +173,9 @@ void ossimHillshadeUtil::initializeChain()
       gain = lookup.toFloat64();
    normSource->setSmoothnessFactor(gain);
 
-   m_procChain = normSource.get();
-
-   ossimRefPtr<ossimImageSource> colorSource = 0;
-   if ( hasLutFile() )
-   {
-      if ( m_imgLayer.size() )
-      {
-         ossimNotify(ossimNotifyLevel_WARN)
-            << MODULE << " WARNING:"
-            << "\nBoth a color table and image(s) have been provided for a color source.\n"
-            << "Choosing color table of image(s).\n";
-      }
-
-      colorSource = addIndexToRgbLutFilter();
-   }
-   else
-   {
-      // Combine the images and set as color source for bump shade.
-      colorSource = combineLayers( m_imgLayer );
-   }
-
    // Create the bump shade.
    ossimRefPtr<ossimBumpShadeTileSource> bumpShade = new ossimBumpShadeTileSource;
+   m_procChain = bumpShade.get();
 
    // Set the azimuth angle.
    ossim_float64 azimuthAngle = 180;
@@ -234,7 +203,7 @@ void ossimHillshadeUtil::initializeChain()
    }
    bumpShade->setElevationAngle(elevationAngle);
 
-   if ( !hasLutFile() )
+   if ( !hasLUT )
    {
       // Set the color.
       ossim_uint8 r = 0xff;
@@ -242,46 +211,43 @@ void ossimHillshadeUtil::initializeChain()
       ossim_uint8 b = 0xff;
       lookup = m_kwl.findKey( COLOR_RED_KW );
       if ( lookup.size() )
-      {
          r = lookup.toUInt8();
-      }
+
       lookup = m_kwl.findKey( COLOR_GREEN_KW );
       if ( lookup.size() )
-      {
          g = lookup.toUInt8();
-      }
+
       lookup = m_kwl.findKey( COLOR_BLUE_KW );
       if ( lookup.size() )
-      {
          b = lookup.toUInt8();
-      }
+
       bumpShade->setRgbColorSource(r, g, b);
    }
 
-   // Connect the two sources.
+   // Connect the normal source and add color source if requested:
    bumpShade->connectMyInputTo(0, normSource.get());
-   bumpShade->connectMyInputTo(1, colorSource.get());
 
-   if ( traceDebug() )
+   // Color can be added via color image source and/or LUT. If LUT only, the remap happens after the
+   // bump shade. If both LUT and color source (single-band), the LUT is applied to the color source.
+   // The latter is convenient for using a "colorized DEM" as a color source for the bump shade.
+   std::vector< ossimRefPtr<ossimSingleImageChain> > colorLayers;
+   initSources(colorLayers, COLOR_SOURCE_KW);
+   if (!colorLayers.empty())
    {
-      ossim_uint8 r = 0xff;
-      ossim_uint8 g = 0xff;
-      ossim_uint8 b = 0xff;
-      bumpShade->getRgbColorSource(r, g, b);
-      ossimNotify(ossimNotifyLevel_DEBUG)
-         << "\nazimuthAngle:      " << azimuthAngle
-         << "\nelevation angle:   " << elevationAngle
-         << "\ngain factor:       " << gain
-         << "\nr:                 " << int(r)
-         << "\ng:                 " << int(g)
-         << "\nb:                 " << int(b)
-         << "\n";
+      // A color source image (or list) is provided. Add them as input to bump shade:
+      ossimRefPtr<ossimImageSource> colorSource = combineLayers( colorLayers );
+      if (hasLUT)
+         addIndexToRgbLutFilter(colorSource); // Need to apply LUT to single-band color source
+      bumpShade->connectMyInputTo(1, colorSource.get());
+   }
+   else if (hasLUT)
+   {
+      // Apply LUT to bump shade result:
+      addIndexToRgbLutFilter(m_procChain);
    }
 
-   // Capture the pointer to give to the writer.
-   m_procChain = bumpShade.get();
-
-   ossimChipProcUtil::appendCutRectFilter();
+   // While it seems a cut-rect filter should be appended here, it may not be necessary if the
+   // getChip() interface is used. Only when execute() is called is that needed.
 }
 
 void ossimHillshadeUtil::setUsage(ossimArgumentParser& ap)
@@ -292,7 +258,6 @@ void ossimHillshadeUtil::setUsage(ossimArgumentParser& ap)
    // Set app name.
    ossimString appName = ap.getApplicationName();
    ossimApplicationUsage* au = ap.getApplicationUsage();
-   au->setApplicationName( appName );
    ossimString usageString = appName;
    usageString += " [option]... [input-option]... <input-file(s)> <output-file>\nNote at least one input is required either from one of the input options, e.g. --input-dem <my-dem.hgt> or adding to command line in front of the output file in which case the code will try to ascertain what type of input it is.\n\nAvailable traces:\n-T \"ossimChipperUtil:debug\"   - General debug trace to standard out.\n-T \"ossimChipperUtil:log\"     - Writes a log file to output-file.log.\n-T \"ossimChipperUtil:options\" - Writes the options to output-file-options.kwl.";
    au->setCommandLineUsage(usageString);
@@ -304,10 +269,11 @@ void ossimHillshadeUtil::setUsage(ossimArgumentParser& ap)
    au->addCommandLineOption("--elevation", "<elevation>\nhillshade option - Light source elevation angle for bumb shade.\nRange: 0 to 90, Default = 45.0");
    au->addCommandLineOption("--exaggeration", "<factor>\nMultiplier for elevation values when computing surface normals. Has the effect of lengthening shadows for oblique lighting.\nRange: .0001 to 50000, Default = 1.0");
 
-   // Keeping single line in tact for examples for cut and paste purposes.
-   ossimString prior_descr = au->getDescription();
+   // Base class has its own:
+   ossimChipProcUtil::setUsage(ap);
+
    ostringstream description;
-   description << prior_descr << "\nNOTES:\n"
+   description << DESCRIPTION << "\n\nNOTES:\n"
       << "1) Never use same base name in the same directory! Example is you have a Chicago.tif\n"
       << "   and you want a Chicago.jp2, output Chicago.jp2 to its own directory.\n"
       << "\nExample command to Hill shade: Hill shade two DEMs, output to a geotiff.\n"
@@ -317,5 +283,6 @@ void ossimHillshadeUtil::setUsage(ossimArgumentParser& ap)
       << std::endl;
 
    au->setDescription(description.str());
+
 }
 

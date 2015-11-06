@@ -28,7 +28,10 @@ void ossimUtility::setUsage(ossimArgumentParser& ap)
    // Add global usage options.
    ossimInit::instance()->addOptions(ap);
 
+   std::string appName = ap.getApplicationName();
    ossimApplicationUsage* au = ap.getApplicationUsage();
+   au->setApplicationName( ossimString( appName ) );
+
    au->addCommandLineOption(
          "--write-api <filename>",
          "Writes a JSON API specification to the specified filename.");

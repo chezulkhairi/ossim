@@ -6,8 +6,9 @@
 //**************************************************************************************************
 
 #ifndef ossimUtility_HEADER
-#define ossimUtility_HEADER
+#define ossimUtility_HEADER 1
 
+#include <ossim/base/ossimConstants.h>
 #include <ossim/base/ossimObject.h>
 #include <ossim/base/ossimProcessInterface.h>
 #include <ossim/base/ossimListenerManager.h>
@@ -17,9 +18,9 @@
 /*!
  *  Base class for all OSSIM utility applications.
  */
-class OSSIMDLLEXPORT ossimUtility : public ossimObject,
-                                    public ossimProcessInterface,
-                                    public ossimListenerManager
+class OSSIM_DLL ossimUtility : public ossimObject,
+                               public ossimProcessInterface,
+                               public ossimListenerManager
 {
 public:
    ossimUtility();
@@ -87,6 +88,9 @@ public:
    // static const char* DESCRIPTION;
 
 private:
+   /**
+    * Used for reading text files of template and JSON API from disk ONLY.
+    */
    bool readFile(const ossimFilename& filename, ossimString& contents) const;
 };
 

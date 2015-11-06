@@ -1039,26 +1039,6 @@ bool ossimHLZUtil::NormChipProcessorJob::level1Test()
    return true;
 }
 
-void ossimHLZUtil::printApiJson(ostream& out) const
-{
-   ossimFilename json_path (ossimPreferences::instance()->findPreference("ossim_share_directory"));
-   json_path += "/ossim/util/ossimHlzApi.json";
-   if (json_path.isReadable())
-   {
-      char line[256];
-      ifstream ifs (json_path.chars());
-      ifs.getline(line, 256);
-
-       while (ifs.good())
-       {
-         out << line << endl;
-         ifs.getline(line, 256);
-       }
-
-       ifs.close();
-   }
-}
-
 ossimHLZUtil::MaskSource::MaskSource(ossimHLZUtil* hlzUtil, ossimKeywordlist& kwl,
                                      ossim_uint32 index)
 :  exclude (true),
