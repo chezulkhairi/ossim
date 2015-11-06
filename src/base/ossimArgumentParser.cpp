@@ -125,6 +125,59 @@ bool ossimArgumentParser::isNumber(const char* str)
 
 }
 
+ossimArgumentParser::ossimParameter::ossimParameter(const ossimParameter& p)
+:  theType(p.theType), theValueString(p.theValueString), theCopiedFlag(true)
+
+{
+   switch(theType)
+   {
+   case ossimParameter::OSSIM_FLOAT_PARAMETER:
+      theValue.theFloat = new float;
+      *theValue.theFloat = (float)theValueString.toDouble();
+      break;
+   case ossimParameter::OSSIM_DOUBLE_PARAMETER:
+      theValue.theDouble = new double;
+      *theValue.theDouble = theValueString.toDouble();
+      break;
+   case ossimParameter::OSSIM_INT_PARAMETER:
+      theValue.theInt = new int;
+      *theValue.theInt = theValueString.toInt();
+      break;
+   case ossimParameter::OSSIM_UNSIGNED_INT_PARAMETER:
+      theValue.theUint = new ossim_uint32;
+      *theValue.theUint = theValueString.toUInt32();
+      break;
+   case ossimParameter::OSSIM_STRING_PARAMETER:
+      theValue.theString = new std::string;
+      *theValue.theString = theValueString.string();
+      break;
+   }
+}
+
+ossimArgumentParser::ossimParameter::~ossimParameter()
+{
+   if (theCopiedFlag)
+   {
+      switch(theType)
+      {
+      case ossimParameter::OSSIM_FLOAT_PARAMETER:
+         delete theValue.theFloat;
+         break;
+      case ossimParameter::OSSIM_DOUBLE_PARAMETER:
+         delete theValue.theDouble;
+         break;
+      case ossimParameter::OSSIM_INT_PARAMETER:
+         delete theValue.theInt;
+         break;
+      case ossimParameter::OSSIM_UNSIGNED_INT_PARAMETER:
+         delete theValue.theUint;
+         break;
+      case ossimParameter::OSSIM_STRING_PARAMETER:
+         break;
+      }
+   }
+}
+
 bool ossimArgumentParser::ossimParameter::valid(const char* str) const
 {
    switch(theType)
@@ -140,42 +193,31 @@ bool ossimArgumentParser::ossimParameter::valid(const char* str) const
 
 bool ossimArgumentParser::ossimParameter::assign(const char* str)
 {
-   if (valid(str))
-   {
-      switch(theType)
-      {
-         case ossimParameter::OSSIM_FLOAT_PARAMETER:
-         {
-            *theValue.theFloat = (float)ossimString(str).toDouble();
-            break;
-         }
-         case ossimParameter::OSSIM_DOUBLE_PARAMETER:
-         {
-            *theValue.theDouble = ossimString(str).toDouble();
-            break;
-         }
-         case ossimParameter::OSSIM_INT_PARAMETER:
-         {
-            *theValue.theInt = ossimString(str).toInt();
-            break;
-         }
-         case ossimParameter::OSSIM_UNSIGNED_INT_PARAMETER:
-         {
-            *theValue.theUint = ossimString(str).toUInt32();
-            break;
-         }
-         case ossimParameter::OSSIM_STRING_PARAMETER:
-         {
-            *theValue.theString = str;
-            break;
-         }
-      }
-      return true;
-   }
-   else
-   {
+   if (!valid(str))
       return false;
+
+   // We keep a copy of the parameter:
+   theValueString = str;
+
+   switch(theType)
+   {
+   case ossimParameter::OSSIM_FLOAT_PARAMETER:
+      *theValue.theFloat = (float)theValueString.toDouble();
+      break;
+   case ossimParameter::OSSIM_DOUBLE_PARAMETER:
+      *theValue.theDouble = theValueString.toDouble();
+      break;
+   case ossimParameter::OSSIM_INT_PARAMETER:
+      *theValue.theInt = theValueString.toInt();
+      break;
+   case ossimParameter::OSSIM_UNSIGNED_INT_PARAMETER:
+      *theValue.theUint = theValueString.toUInt32();
+      break;
+   case ossimParameter::OSSIM_STRING_PARAMETER:
+      *theValue.theString = theValueString.chars();
+      break;
    }
+   return true;
 }
 
 ossimArgumentParser::ossimArgumentParser(int* argc,char **argv):
@@ -286,7 +328,7 @@ bool ossimArgumentParser::read(const std::string& str)
    return true;
 }
 
-bool ossimArgumentParser::read(const std::string& str, ossimParameter value1)
+bool ossimArgumentParser::read(const std::string& str, ossimParameter& value1)
 {
    int pos=find(str);
    if (pos<=0) return false;
@@ -300,8 +342,8 @@ bool ossimArgumentParser::read(const std::string& str, ossimParameter value1)
    return true;
 }
 
-bool ossimArgumentParser::read(const std::string& str, ossimParameter value1,
-                               ossimParameter value2)
+bool ossimArgumentParser::read(const std::string& str, ossimParameter& value1,
+                               ossimParameter& value2)
 {
    int pos=find(str);
    if (pos<=0) return false;
@@ -317,8 +359,8 @@ bool ossimArgumentParser::read(const std::string& str, ossimParameter value1,
    return true;
 }
 
-bool ossimArgumentParser::read(const std::string& str, ossimParameter value1,
-                               ossimParameter value2, ossimParameter value3)
+bool ossimArgumentParser::read(const std::string& str, ossimParameter& value1,
+                               ossimParameter& value2, ossimParameter& value3)
 {
    int pos=find(str);
    if (pos<=0) return false;
@@ -336,9 +378,9 @@ bool ossimArgumentParser::read(const std::string& str, ossimParameter value1,
    return true;
 }
 
-bool ossimArgumentParser::read(const std::string& str, ossimParameter value1,
-                               ossimParameter value2, ossimParameter value3,
-                               ossimParameter value4)
+bool ossimArgumentParser::read(const std::string& str, ossimParameter& value1,
+                               ossimParameter& value2, ossimParameter& value3,
+                               ossimParameter& value4)
 {
    int pos=find(str);
    if (pos<=0) return false;
@@ -358,9 +400,9 @@ bool ossimArgumentParser::read(const std::string& str, ossimParameter value1,
    return true;
 }
 
-bool ossimArgumentParser::read(const std::string& str, ossimParameter value1,
-                               ossimParameter value2, ossimParameter value3,
-                               ossimParameter value4, ossimParameter value5)
+bool ossimArgumentParser::read(const std::string& str, ossimParameter& value1,
+                               ossimParameter& value2, ossimParameter& value3,
+                               ossimParameter& value4, ossimParameter& value5)
 {
    int pos=find(str);
    if (pos<=0) return false;
@@ -382,10 +424,10 @@ bool ossimArgumentParser::read(const std::string& str, ossimParameter value1,
    return true;
 }
 
-bool ossimArgumentParser::read(const std::string& str, ossimParameter value1,
-                               ossimParameter value2, ossimParameter value3,
-                               ossimParameter value4, ossimParameter value5,
-                               ossimParameter value6)
+bool ossimArgumentParser::read(const std::string& str, ossimParameter& value1,
+                               ossimParameter& value2, ossimParameter& value3,
+                               ossimParameter& value4, ossimParameter& value5,
+                               ossimParameter& value6)
 {
    int pos=find(str);
    if (pos<=0) return false;
@@ -409,6 +451,37 @@ bool ossimArgumentParser::read(const std::string& str, ossimParameter value1,
    return true;
 }
 
+bool ossimArgumentParser::read(const std::string& str,
+                               std::vector<ossimArgumentParser::ossimParameter>& param_list)
+{
+   param_list.clear();
+
+   int pos=find(str);
+   if (pos<=0)
+      return false;
+
+   // Option is removed even if no values found:
+   remove(pos, 1);
+   ossimString value;
+   while (pos < *theArgc)
+   {
+      ossimParameter param(value);
+      if (param.valid(theArgv[pos]))
+      {
+         param.assign(theArgv[pos]);
+         param_list.push_back(param);
+         remove(pos, 1);
+      }
+      else
+      {
+         delete value;
+         break;
+      }
+   }
+
+   return true;
+}
+
 
 /** if the argument value at the posotion pos matches specified string, and subsequent
  * parameters are also matched then set the paramter values and remove the from the list of arguments.*/
@@ -425,7 +498,7 @@ bool ossimArgumentParser::read(int pos, const std::string& str)
    }
 }
 
-bool ossimArgumentParser::read(int pos, const std::string& str, ossimParameter value1)
+bool ossimArgumentParser::read(int pos, const std::string& str, ossimParameter& value1)
 {
    if (match(pos,str) &&
        value1.valid(theArgv[pos+1]))
@@ -440,7 +513,7 @@ bool ossimArgumentParser::read(int pos, const std::string& str, ossimParameter v
    }
 }
 
-bool ossimArgumentParser::read(int pos, const std::string& str, ossimParameter value1, ossimParameter value2)
+bool ossimArgumentParser::read(int pos, const std::string& str, ossimParameter& value1, ossimParameter& value2)
 {
    if (match(pos,str) &&
        value1.valid(theArgv[pos+1]) &&
@@ -457,7 +530,7 @@ bool ossimArgumentParser::read(int pos, const std::string& str, ossimParameter v
    }
 }
 
-bool ossimArgumentParser::read(int pos, const std::string& str, ossimParameter value1, ossimParameter value2, ossimParameter value3)
+bool ossimArgumentParser::read(int pos, const std::string& str, ossimParameter& value1, ossimParameter& value2, ossimParameter& value3)
 {
    if (match(pos,str) &&
        value1.valid(theArgv[pos+1]) &&
@@ -476,7 +549,7 @@ bool ossimArgumentParser::read(int pos, const std::string& str, ossimParameter v
    }
 }
 
-bool ossimArgumentParser::read(int pos, const std::string& str, ossimParameter value1, ossimParameter value2, ossimParameter value3, ossimParameter value4)
+bool ossimArgumentParser::read(int pos, const std::string& str, ossimParameter& value1, ossimParameter& value2, ossimParameter& value3, ossimParameter& value4)
 {
    if (match(pos,str) &&
        value1.valid(theArgv[pos+1]) &&
