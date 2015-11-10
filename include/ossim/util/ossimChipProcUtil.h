@@ -13,23 +13,15 @@
 #include <ossim/imaging/ossimImageSource.h>
 #include <ossim/imaging/ossimSingleImageChain.h>
 #include <ossim/imaging/ossimImageFileWriter.h>
+#include <ossim/imaging/ossimRectangleCutFilter.h>
 #include <ossim/projection/ossimMapProjection.h>
-#include <ossim/util/ossimUtility.h>
+#include <ossim/projection/ossimImageViewAffineTransform.h>
 #include <map>
 #include <vector>
+#include <ossim/util/ossimUtility.h>
+#include <ossim/base/ossimArgumentParser.h>
 
 // Forward class declarations:
-class ossimArgumentParser;
-class ossimDpt;
-class ossimFilename;
-class ossimGeoPolygon;
-class ossimGpt;
-class ossimImageData;
-class ossimImageFileWriter;
-class ossimImageGeometry;
-class ossimIrect;
-class ossimKeywordlist;
-
 /**
  * @brief ossimChipProcUtil class.
  *
@@ -129,22 +121,13 @@ protected:
     */
    void initOutputProjection();
    
-   /** @brief Creates chains for all images. */
-   void addSources();
+   /** @brief Creates chains for image entries associated with specified keyword. This is usually
+    * the input image sources but could also be used for reading list of dem or color sources
+    * @note Throws ossimException on error.
+    */
+   void initSources(std::vector< ossimRefPtr<ossimSingleImageChain> >& layers,
+                    const ossimString& keyword) const;
    
-   /**
-    * @brief Method to create a chain and add to img layers from file.
-    * @param file Image to open.
-    * @parm entryIndex Entry to open.
-    */
-   void addSource(const ossimFilename& file, ossim_uint32 entryIndex);
-
-   /**
-    * @brief  Method to create a chain and add to img layers from a
-    * ossimSrcRecord.
-    */
-   void addSource(const ossimSrcRecord& rec);
-
    /**
     * @brief Creates the ossimSingleImageChain from file and populates the chain with the reader
     * handler ONLY. Derived classes must finish constructing the chain according to their
@@ -351,26 +334,28 @@ protected:
    void propagateOutputProjectionToChains();
 
    /**
-    * @brief Creates ossimIndexToRgbLutFilter and appends it to m_procChain.
+    * @brief Creates ossimIndexToRgbLutFilter and appends it to source. The source is modified
+    * to point to the new chain head.
     * @note Throws ossimException on error.
     */
-   void addIndexToRgbLutFilter();
+   void addIndexToRgbLutFilter(ossimRefPtr<ossimImageSource> &source) const;
 
    /**
-    * When multiple input sources are present, this method inserts a combiner into the processing
-    * chain.
+    * When multiple input sources are present, this method instantiates a combiner and adds inputs
+    * @return Reference to the combiner.
     */
-   void combineLayers();
+   ossimRefPtr<ossimImageSource>
+   combineLayers(std::vector< ossimRefPtr<ossimSingleImageChain> >& layers) const;
 
    /**
-    * @brief Creates ossimScalarRemapper and connects to source.
+    * @brief Creates ossimScalarRemapper and connects to source.  The source is modified
+    * to point to the new chain head.
     * @param Source to connect to.
     * @param scalar Scalar type.
-    * @return End of chain with remapper on it.
     * @note Throws ossimException on error.
     */
-   ossimRefPtr<ossimImageSource> addScalarRemapper(ossimRefPtr<ossimImageSource> &source,
-                                                   ossimScalarType scalar) const;
+   void addScalarRemapper(ossimRefPtr<ossimImageSource> &source,
+                          ossimScalarType scalar) const;
 
    /**
     * @brief Set up ossimHistogramRemapper for a chain.
@@ -389,7 +374,7 @@ protected:
                        ossim_uint32 entryIndex ) const;
 
    /**
-    * @brief Initializes m_aoiViewRect with the output area of interest.
+    * @brief Initializes m_aoiViewRect with the output area of interest as specified in master KWL.
     *
     * Initialization will either come from user defined cut options or the
     * source bounding rect with user options taking precidence.
@@ -397,6 +382,11 @@ protected:
     * @note Throws ossimException on error.
     */
    void assignAoiViewRect();
+
+   /**
+    * @brief Initializes m_aoiViewRect from specified ground rect.
+    */
+   void assignAoiViewRect(const ossimGrect& bbox);
 
    /**
     * @brief Method to calculate and initialize scale and area of interest
@@ -646,7 +636,9 @@ protected:
    * We need to support changing clips without doing a full initilization.  
    * we will save the ImageSource pointer on first initialization
    */
-    ossimRefPtr<ossimImageSource> m_procChain;
+   ossimRefPtr<ossimImageSource> m_procChain;
+   ossimRefPtr<ossimRectangleCutFilter> m_cutRectFilter;
+
 
     ossimFilename m_lutFile;
 };

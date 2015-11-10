@@ -32,7 +32,7 @@ ossimUtilityFactory::~ossimUtilityFactory()
    ossimUtilityManager::instance()->unregisterFactory(this);
 }
 
-virtual ossimUtility* createUtility(const ossimString& argName) const
+ossimUtility* ossimUtilityFactory::createUtility(const ossimString& argName) const
 {
    ossimString utilName (argName);
    utilName.downcase();

@@ -63,7 +63,7 @@ public:
    virtual ossimString getClassName() const { return "ossimSlopeUtil"; }
 
    /** Used by ossimUtilityFactory */
-   static ossimString DESCRIPTION;
+   static const char* DESCRIPTION;
 
 protected:
    bool initializeChain();

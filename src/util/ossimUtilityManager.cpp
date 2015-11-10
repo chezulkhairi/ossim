@@ -9,6 +9,8 @@
 
 using namespace std;
 
+ossimUtilityManager* ossimUtilityManager::s_instance = 0;
+
 ossimUtilityManager* ossimUtilityManager::instance()
 {
    if (!s_instance)
@@ -46,11 +48,10 @@ void ossimUtilityManager::getCapabilities(map<string, string>& capabilities) con
    }
 }
 
-virtual ossimUtility* ossimUtilityManager::createUtility(const ossimString& argName) const
+ossimUtility* ossimUtilityManager::createUtility(const ossimString& argName) const
 {
    ossimUtility* result = 0;
    vector<ossimUtilityFactoryBase*>::const_iterator iter = m_factoryList.begin();
-   ossimUtility* result = 0;
    while ((iter != m_factoryList.end()) && (!result))
    {
       result = (*iter)->createUtility(argName);
